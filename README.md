@@ -8,3 +8,4 @@ USAGE:
 
 1. python3 linNumDataExtraction.py should fetch the data
 2. python3 nuggetplot.py to plot a nice histogram
+3. graph + scripts/ nugget/ has all the graphs and data: beautiful x'D
