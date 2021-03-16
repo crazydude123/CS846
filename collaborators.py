@@ -14,9 +14,8 @@ f = open('sstubs.json')
 # a dictionary 
 data = json.load(f)
 x = []
-y = [] 
-z = []
-for i in range(200, 600):
+z = [] 
+for i in range(500, 1000):
     sha = data[i]['fixCommitSHA1']
     shaparent = data[i]['fixCommitParentSHA1']
     projex = data[i]['projectName']
@@ -33,21 +32,13 @@ for i in range(200, 600):
             x.append(0)
     except:
         x.append(0)
-    try:
-        temp1 = commit.committer.collaborators
-        if not (temp1 == None):
-            y.append(temp1)
-        else:
-            y.append(0)
-    except:
-        y.append(0)
-    z.append(datediff.seconds//60)
+    z.append((datediff.days * 60 * 24) + datediff.seconds//60)
     print(i)
 
-t = zip(x, y, z)
+t = zip(x, z)
 with open('collaborators.csv', 'a') as f:
     writer = csv.writer(f, delimiter='\t')
-    #writer.writerows(zip(["Followers"], ["Collaborators"], ["TimeDiffInMins"]))
+    #writer.writerows(zip(["Followers"], ["TimeDiffInMins"]))
     writer.writerows(t)
 
 # 0-200
