@@ -13,8 +13,6 @@ USAGE:
 2. python3 nuggetplot.py to plot a nice histogram
 3. graph + scripts/ nugget/ has all the graphs and data: beautiful x'D
 4. "python3 collaborators.py" fetches the collaborator/follower/timestamp diff in minutes in that order
-	a. collaorators.csv is the o/p of step 4
-
-5. "python3 followers_various.py" give cluster analyses of followers v. time taken to fix bug
-
-6. NOTE THAT collaborators.csv actually has the followers. (collaborators aren't a thing dweeb, grow up)
+5. collaborators.csv is the o/p of step 4
+6. "python3 followers_various.py" give cluster analyses of followers v. time taken to fix bug
+7. NOTE THAT collaborators.csv actually has the followers. (collaborators aren't a thing dweeb, grow up)
