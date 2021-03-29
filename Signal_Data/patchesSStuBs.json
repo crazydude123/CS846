@@ -1,0 +1,3285 @@
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java b/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
+index 8b574a8..6141dfe 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
+@@ -199,7 +199,7 @@
+   public static Intent buildShareIntent(@NonNull Context context,
+                                         @NonNull List<Media> media,
+                                         @NonNull List<RecipientId> recipientIds,
+-                                        @NonNull CharSequence body,
++                                        @Nullable CharSequence body,
+                                         @NonNull TransportOption transportOption)
+   {
+     Intent intent = new Intent(context, MediaSendActivity.class);
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/sharing/MultiShareSender.java b/app/src/main/java/org/thoughtcrime/securesms/sharing/MultiShareSender.java
+index 9488eff..ea4ffd0 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/sharing/MultiShareSender.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/sharing/MultiShareSender.java
+@@ -72,7 +72,9 @@
+       boolean         forceSms       = recipient.isForceSmsSelection() && transport.isSms();
+       int             subscriptionId = transport.getSimSubscriptionId().or(-1);
+       long            expiresIn      = recipient.getExpireMessages() * 1000L;
+-      boolean         needsSplit     = !transport.isSms() && message.length() > transport.calculateCharacters(message).maxPrimaryMessageSize;
++      boolean         needsSplit     = !transport.isSms() &&
++                                       message != null    &&
++                                       message.length() > transport.calculateCharacters(message).maxPrimaryMessageSize;
+       boolean         isMediaMessage = !multiShareArgs.getMedia().isEmpty()                                              ||
+                                        (multiShareArgs.getDataUri() != null && multiShareArgs.getDataUri() != Uri.EMPTY) ||
+                                        multiShareArgs.getStickerLocator() != null                                        ||
+@@ -132,7 +134,7 @@
+                                        int subscriptionId)
+   {
+     String body = multiShareArgs.getDraftText();
+-    if (transportOption.isType(TransportOption.Type.TEXTSECURE) && !forceSms) {
++    if (transportOption.isType(TransportOption.Type.TEXTSECURE) && !forceSms && body != null) {
+       MessageUtil.SplitResult splitMessage = MessageUtil.getSplitMessage(context, body, transportOption.calculateCharacters(body).maxPrimaryMessageSize);
+       body = splitMessage.getBody();
+ 
+diff --git a/paging/lib/src/main/java/org/signal/paging/FixedSizePagingController.java b/paging/lib/src/main/java/org/signal/paging/FixedSizePagingController.java
+index 4587997..e907a99 100644
+--- a/paging/lib/src/main/java/org/signal/paging/FixedSizePagingController.java
++++ b/paging/lib/src/main/java/org/signal/paging/FixedSizePagingController.java
+@@ -22,7 +22,7 @@
+ 
+   private static final String TAG = FixedSizePagingController.class.getSimpleName();
+ 
+-  private static final Executor FETCH_EXECUTOR = SignalExecutors.newFixedLifoThreadExecutor("signal-FixedSizePagingController", 1, 1);
++  private static final Executor FETCH_EXECUTOR = SignalExecutors.newCachedSingleThreadExecutor("signal-FixedSizePagingController");
+   private static final boolean  DEBUG          = false;
+ 
+   private final PagedDataSource<E>       dataSource;
+@@ -49,7 +49,7 @@
+   /**
+    * We assume this method is always called on the same thread, so we can read our
+    * {@code loadState} and construct the parameters of a fetch request. That fetch request can
+-   * then be performed on separate single-thread LIFO executor.
++   * then be performed on separate single-thread executor.
+    */
+   @Override
+   public void onDataNeededAroundIndex(int aroundIndex) {
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+index 6985302..dde69ba 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+@@ -1068,9 +1068,9 @@
+ 
+   private void setGutterSizes(@NonNull MessageRecord current, boolean isGroupThread) {
+     if (isGroupThread && current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_group_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_group_left_gutter));
+     } else if (current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_individual_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_individual_left_gutter));
+     }
+   }
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+index 6985302..dde69ba 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+@@ -1068,9 +1068,9 @@
+ 
+   private void setGutterSizes(@NonNull MessageRecord current, boolean isGroupThread) {
+     if (isGroupThread && current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_group_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_group_left_gutter));
+     } else if (current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_individual_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_individual_left_gutter));
+     }
+   }
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+index 6985302..dde69ba 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+@@ -1068,9 +1068,9 @@
+ 
+   private void setGutterSizes(@NonNull MessageRecord current, boolean isGroupThread) {
+     if (isGroupThread && current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_group_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_group_left_gutter));
+     } else if (current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_individual_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_individual_left_gutter));
+     }
+   }
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+index 6985302..dde69ba 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationItem.java
+@@ -1068,9 +1068,9 @@
+ 
+   private void setGutterSizes(@NonNull MessageRecord current, boolean isGroupThread) {
+     if (isGroupThread && current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_group_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_group_left_gutter));
+     } else if (current.isOutgoing()) {
+-      ViewUtil.setLeftMargin(this, readDimen(R.dimen.conversation_individual_left_gutter));
++      ViewUtil.setPaddingStart(this, readDimen(R.dimen.conversation_individual_left_gutter));
+     }
+   }
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/util/StorageUtil.java b/app/src/main/java/org/thoughtcrime/securesms/util/StorageUtil.java
+index 73cb0f4..3b80f10 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/util/StorageUtil.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/util/StorageUtil.java
+@@ -130,7 +130,7 @@
+   }
+ 
+   public static @NonNull Uri getAudioUri() {
+-    if (Build.VERSION.SDK_INT < 21) {
++    if (Build.VERSION.SDK_INT < 29) {
+       return getLegacyUri(Environment.DIRECTORY_MUSIC);
+     } else {
+       return MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/preferences/AdvancedPreferenceFragment.java b/app/src/main/java/org/thoughtcrime/securesms/preferences/AdvancedPreferenceFragment.java
+index 8759155..f743e8c 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/preferences/AdvancedPreferenceFragment.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/preferences/AdvancedPreferenceFragment.java
+@@ -67,7 +67,7 @@
+ 
+     Preference pinSettings = this.findPreference(ADVANCED_PIN_PREF);
+     pinSettings.setOnPreferenceClickListener(preference -> {
+-      getApplicationPreferencesActivity().pushFragment(new AdvancedPreferenceFragment());
++      getApplicationPreferencesActivity().pushFragment(new AdvancedPinPreferenceFragment());
+       return false;
+     });
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationViewModel.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationViewModel.java
+index 43b85da..38956d3 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationViewModel.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationViewModel.java
+@@ -93,7 +93,7 @@
+       ConversationDataSource dataSource = new ConversationDataSource(context, data.getThreadId());
+       PagingConfig           config     = new PagingConfig.Builder()
+                                                           .setPageSize(25)
+-                                                          .setBufferPages(1)
++                                                          .setBufferPages(3)
+                                                           .setStartIndex(Math.max(startPosition, 0))
+                                                           .build();
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/components/webrtc/WebRtcAudioOutputToggleButton.java b/app/src/main/java/org/thoughtcrime/securesms/components/webrtc/WebRtcAudioOutputToggleButton.java
+index 33960f1..9244b0e 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/components/webrtc/WebRtcAudioOutputToggleButton.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/components/webrtc/WebRtcAudioOutputToggleButton.java
+@@ -113,7 +113,7 @@
+     rv.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
+     rv.setAdapter(adapter);
+ 
+-    picker = new AlertDialog.Builder(getContext())
++    picker = new AlertDialog.Builder(getContext(), R.style.Theme_Signal_AlertDialog_Dark_Cornered)
+                             .setTitle(R.string.WebRtcAudioOutputToggle__audio_output)
+                             .setView(rv)
+                             .setCancelable(true)
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java b/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
+index 37027aa..0a24b01 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
+@@ -548,7 +548,7 @@
+     if (fragment != null) {
+       fragment.pausePlayback();
+ 
+-      SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this);
++      SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this, 300, 0);
+       viewModel.onSendClicked(buildModelsToTransform(fragment), recipients, composeText.getMentions()).observe(this, result -> {
+         dialog.dismiss();
+         finish();
+@@ -573,7 +573,7 @@
+ 
+     fragment.pausePlayback();
+ 
+-    SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this);
++    SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this, 300, 0);
+     viewModel.onSendClicked(buildModelsToTransform(fragment), Collections.emptyList(), composeText.getMentions())
+              .observe(this, result -> {
+                 dialog.dismiss();
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java b/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
+index 37027aa..0a24b01 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/mediasend/MediaSendActivity.java
+@@ -548,7 +548,7 @@
+     if (fragment != null) {
+       fragment.pausePlayback();
+ 
+-      SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this);
++      SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this, 300, 0);
+       viewModel.onSendClicked(buildModelsToTransform(fragment), recipients, composeText.getMentions()).observe(this, result -> {
+         dialog.dismiss();
+         finish();
+@@ -573,7 +573,7 @@
+ 
+     fragment.pausePlayback();
+ 
+-    SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this);
++    SimpleProgressDialog.DismissibleDialog dialog = SimpleProgressDialog.showDelayed(this, 300, 0);
+     viewModel.onSendClicked(buildModelsToTransform(fragment), Collections.emptyList(), composeText.getMentions())
+              .observe(this, result -> {
+                 dialog.dismiss();
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushProcessMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushProcessMessageJob.java
+index bc3e83f..b4ecac2 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushProcessMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushProcessMessageJob.java
+@@ -937,7 +937,7 @@
+         threadId = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(getSyncMessageDestination(message));
+       } else if (message.getMessage().getRemoteDelete().isPresent()) {
+         handleRemoteDelete(content, message.getMessage());
+-      } else if (message.getMessage().getAttachments().isPresent() || message.getMessage().getQuote().isPresent() || message.getMessage().getPreviews().isPresent() || message.getMessage().getSticker().isPresent() || message.getMessage().isViewOnce()) {
++      } else if (message.getMessage().getAttachments().isPresent() || message.getMessage().getQuote().isPresent() || message.getMessage().getPreviews().isPresent() || message.getMessage().getSticker().isPresent() || message.getMessage().isViewOnce() || message.getMessage().getMentions().isPresent()) {
+         threadId = handleSynchronizeSentMediaMessage(message);
+       } else {
+         threadId = handleSynchronizeSentTextMessage(message);
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java
+index 124f4df..4d8adad 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java
+@@ -40,7 +40,7 @@
+ 
+   @WorkerThread
+   @NonNull List<Recipient> search(@NonNull MentionQuery mentionQuery) {
+-    if (mentionQuery.query == null) {
++    if (mentionQuery.query == null || mentionQuery.members.isEmpty()) {
+       return Collections.emptyList();
+     }
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java
+index 124f4df..4d8adad 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ui/mentions/MentionsPickerRepository.java
+@@ -40,7 +40,7 @@
+ 
+   @WorkerThread
+   @NonNull List<Recipient> search(@NonNull MentionQuery mentionQuery) {
+-    if (mentionQuery.query == null) {
++    if (mentionQuery.query == null || mentionQuery.members.isEmpty()) {
+       return Collections.emptyList();
+     }
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/contacts/sync/DirectoryHelper.java b/app/src/main/java/org/thoughtcrime/securesms/contacts/sync/DirectoryHelper.java
+index a58e96f..cb84c3f 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/contacts/sync/DirectoryHelper.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/contacts/sync/DirectoryHelper.java
+@@ -83,7 +83,7 @@
+       return;
+     }
+ 
+-    if (!Permissions.hasAll(context, Manifest.permission.WRITE_CONTACTS)) {
++    if (!Permissions.hasAll(context, Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)) {
+       Log.w(TAG, "No contact permissions. Skipping.");
+       return;
+     }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/mms/AudioSlide.java b/app/src/main/java/org/thoughtcrime/securesms/mms/AudioSlide.java
+index 29f83cf..ae561f0 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/mms/AudioSlide.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/mms/AudioSlide.java
+@@ -53,7 +53,7 @@
+ 
+   @Override
+   public boolean hasImage() {
+-    return true;
++    return false;
+   }
+ 
+   @Override
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/groups/GroupsV2CapabilityChecker.java b/app/src/main/java/org/thoughtcrime/securesms/groups/GroupsV2CapabilityChecker.java
+index c3d1455..3eb10c2 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/groups/GroupsV2CapabilityChecker.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/groups/GroupsV2CapabilityChecker.java
+@@ -44,7 +44,7 @@
+       JobManager jobManager = ApplicationDependencies.getJobManager();
+ 
+       for (Job job : jobs) {
+-        if (!jobManager.runSynchronously(job, TimeUnit.SECONDS.toMillis(5000)).isPresent()) {
++        if (!jobManager.runSynchronously(job, TimeUnit.SECONDS.toMillis(5)).isPresent()) {
+           throw new IOException("Recipient capability was not retrieved in time");
+         }
+       }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogActivity.java b/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogActivity.java
+index c01bbf6..d0d0586 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogActivity.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogActivity.java
+@@ -187,7 +187,7 @@
+   }
+ 
+   private void presentLines(@NonNull List<LogLine> lines) {
+-    if (loadingDialog != null) {
++    if (loadingDialog != null && lines.size() > 0) {
+       loadingDialog.dismiss();
+       loadingDialog = null;
+ 
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+index 2ebb3e4..e87cef6 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+@@ -172,7 +172,7 @@
+       return jobs;
+ 
+     } catch (ProtocolInvalidVersionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.INVALID_VERSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -180,7 +180,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolInvalidMessageException | ProtocolInvalidKeyIdException | ProtocolInvalidKeyException | ProtocolUntrustedIdentityException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.CORRUPT_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -188,7 +188,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolNoSessionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.NO_SESSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -196,7 +196,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolLegacyMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.LEGACY_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -204,7 +204,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolDuplicateMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.DUPLICATE_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -212,7 +212,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (InvalidMetadataVersionException | InvalidMetadataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.emptyList();
+ 
+     } catch (SelfSendException e) {
+@@ -220,7 +220,7 @@
+       return Collections.emptyList();
+ 
+     } catch (UnsupportedDataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.UNSUPPORTED_DATA_MESSAGE,
+                                        toExceptionMetadata(e),
+                                        messageId,
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+index 2ebb3e4..e87cef6 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+@@ -172,7 +172,7 @@
+       return jobs;
+ 
+     } catch (ProtocolInvalidVersionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.INVALID_VERSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -180,7 +180,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolInvalidMessageException | ProtocolInvalidKeyIdException | ProtocolInvalidKeyException | ProtocolUntrustedIdentityException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.CORRUPT_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -188,7 +188,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolNoSessionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.NO_SESSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -196,7 +196,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolLegacyMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.LEGACY_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -204,7 +204,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolDuplicateMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.DUPLICATE_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -212,7 +212,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (InvalidMetadataVersionException | InvalidMetadataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.emptyList();
+ 
+     } catch (SelfSendException e) {
+@@ -220,7 +220,7 @@
+       return Collections.emptyList();
+ 
+     } catch (UnsupportedDataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.UNSUPPORTED_DATA_MESSAGE,
+                                        toExceptionMetadata(e),
+                                        messageId,
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+index 2ebb3e4..e87cef6 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+@@ -172,7 +172,7 @@
+       return jobs;
+ 
+     } catch (ProtocolInvalidVersionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.INVALID_VERSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -180,7 +180,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolInvalidMessageException | ProtocolInvalidKeyIdException | ProtocolInvalidKeyException | ProtocolUntrustedIdentityException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.CORRUPT_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -188,7 +188,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolNoSessionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.NO_SESSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -196,7 +196,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolLegacyMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.LEGACY_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -204,7 +204,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolDuplicateMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.DUPLICATE_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -212,7 +212,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (InvalidMetadataVersionException | InvalidMetadataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.emptyList();
+ 
+     } catch (SelfSendException e) {
+@@ -220,7 +220,7 @@
+       return Collections.emptyList();
+ 
+     } catch (UnsupportedDataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.UNSUPPORTED_DATA_MESSAGE,
+                                        toExceptionMetadata(e),
+                                        messageId,
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+index 2ebb3e4..e87cef6 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+@@ -172,7 +172,7 @@
+       return jobs;
+ 
+     } catch (ProtocolInvalidVersionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.INVALID_VERSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -180,7 +180,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolInvalidMessageException | ProtocolInvalidKeyIdException | ProtocolInvalidKeyException | ProtocolUntrustedIdentityException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.CORRUPT_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -188,7 +188,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolNoSessionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.NO_SESSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -196,7 +196,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolLegacyMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.LEGACY_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -204,7 +204,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolDuplicateMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.DUPLICATE_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -212,7 +212,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (InvalidMetadataVersionException | InvalidMetadataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.emptyList();
+ 
+     } catch (SelfSendException e) {
+@@ -220,7 +220,7 @@
+       return Collections.emptyList();
+ 
+     } catch (UnsupportedDataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.UNSUPPORTED_DATA_MESSAGE,
+                                        toExceptionMetadata(e),
+                                        messageId,
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+index 2ebb3e4..e87cef6 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+@@ -172,7 +172,7 @@
+       return jobs;
+ 
+     } catch (ProtocolInvalidVersionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.INVALID_VERSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -180,7 +180,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolInvalidMessageException | ProtocolInvalidKeyIdException | ProtocolInvalidKeyException | ProtocolUntrustedIdentityException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.CORRUPT_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -188,7 +188,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolNoSessionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.NO_SESSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -196,7 +196,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolLegacyMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.LEGACY_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -204,7 +204,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolDuplicateMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.DUPLICATE_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -212,7 +212,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (InvalidMetadataVersionException | InvalidMetadataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.emptyList();
+ 
+     } catch (SelfSendException e) {
+@@ -220,7 +220,7 @@
+       return Collections.emptyList();
+ 
+     } catch (UnsupportedDataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.UNSUPPORTED_DATA_MESSAGE,
+                                        toExceptionMetadata(e),
+                                        messageId,
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+index 2ebb3e4..e87cef6 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+@@ -172,7 +172,7 @@
+       return jobs;
+ 
+     } catch (ProtocolInvalidVersionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.INVALID_VERSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -180,7 +180,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolInvalidMessageException | ProtocolInvalidKeyIdException | ProtocolInvalidKeyException | ProtocolUntrustedIdentityException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.CORRUPT_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -188,7 +188,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolNoSessionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.NO_SESSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -196,7 +196,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolLegacyMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.LEGACY_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -204,7 +204,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolDuplicateMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.DUPLICATE_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -212,7 +212,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (InvalidMetadataVersionException | InvalidMetadataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.emptyList();
+ 
+     } catch (SelfSendException e) {
+@@ -220,7 +220,7 @@
+       return Collections.emptyList();
+ 
+     } catch (UnsupportedDataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.UNSUPPORTED_DATA_MESSAGE,
+                                        toExceptionMetadata(e),
+                                        messageId,
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+index 2ebb3e4..e87cef6 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/jobs/PushDecryptMessageJob.java
+@@ -172,7 +172,7 @@
+       return jobs;
+ 
+     } catch (ProtocolInvalidVersionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.INVALID_VERSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -180,7 +180,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolInvalidMessageException | ProtocolInvalidKeyIdException | ProtocolInvalidKeyException | ProtocolUntrustedIdentityException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.CORRUPT_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -188,7 +188,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolNoSessionException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.NO_SESSION,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -196,7 +196,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolLegacyMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.LEGACY_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -204,7 +204,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (ProtocolDuplicateMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.DUPLICATE_MESSAGE,
+                                                                  toExceptionMetadata(e),
+                                                                  messageId,
+@@ -212,7 +212,7 @@
+                                                                  envelope.getTimestamp()));
+ 
+     } catch (InvalidMetadataVersionException | InvalidMetadataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.emptyList();
+ 
+     } catch (SelfSendException e) {
+@@ -220,7 +220,7 @@
+       return Collections.emptyList();
+ 
+     } catch (UnsupportedDataMessageException e) {
+-      Log.w(TAG, e);
++      Log.w(TAG, String.valueOf(envelope.getTimestamp()), e);
+       return Collections.singletonList(new PushProcessMessageJob(PushProcessMessageJob.MessageState.UNSUPPORTED_DATA_MESSAGE,
+                                        toExceptionMetadata(e),
+                                        messageId,
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java b/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java
+index 6746c21..8033359 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java
+@@ -111,13 +111,13 @@
+   @Override
+   @WorkerThread
+   protected void archiveThreads(Set<Long> threadIds) {
+-    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, true);
++    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, false);
+   }
+ 
+   @Override
+   @WorkerThread
+   protected void reverseArchiveThreads(Set<Long> threadIds) {
+-    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, false);
++    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, true);
+   }
+ 
+   @SuppressLint("StaticFieldLeak")
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java b/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java
+index 6746c21..8033359 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversationlist/ConversationListArchiveFragment.java
+@@ -111,13 +111,13 @@
+   @Override
+   @WorkerThread
+   protected void archiveThreads(Set<Long> threadIds) {
+-    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, true);
++    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, false);
+   }
+ 
+   @Override
+   @WorkerThread
+   protected void reverseArchiveThreads(Set<Long> threadIds) {
+-    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, false);
++    DatabaseFactory.getThreadDatabase(getActivity()).setArchived(threadIds, true);
+   }
+ 
+   @SuppressLint("StaticFieldLeak")
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
+index 8bd6a18..6137cb5 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
+@@ -336,7 +336,7 @@
+         selected = getSelectedIndexViaDownEvent(motionEvent);
+ 
+         if (selected == -1) {
+-          if (motionEvent.getRawY() < toolbar.getHeight() + statusBarHeight) {
++          if (motionEvent.getY() < toolbar.getHeight() + statusBarHeight) {
+             isToolbarTouch = true;
+             return false;
+           }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
+index 8bd6a18..6137cb5 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
+@@ -336,7 +336,7 @@
+         selected = getSelectedIndexViaDownEvent(motionEvent);
+ 
+         if (selected == -1) {
+-          if (motionEvent.getRawY() < toolbar.getHeight() + statusBarHeight) {
++          if (motionEvent.getY() < toolbar.getHeight() + statusBarHeight) {
+             isToolbarTouch = true;
+             return false;
+           }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java b/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java
+index 96e37c3..f10aae3 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java
+@@ -64,7 +64,7 @@
+    */
+   void addThread(@NonNull Context context, long oldId, long newId) {
+     ensureInTransaction(context);
+-    ensureRecipientMapIsPopulated(context);
++    ensureThreadMapIsPopulated(context);
+     threadMap.put(oldId, newId);
+     DatabaseFactory.getRemappedRecordsDatabase(context).addThreadMapping(oldId, newId);
+   }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java b/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java
+index 96e37c3..f10aae3 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/database/RemappedRecords.java
+@@ -64,7 +64,7 @@
+    */
+   void addThread(@NonNull Context context, long oldId, long newId) {
+     ensureInTransaction(context);
+-    ensureRecipientMapIsPopulated(context);
++    ensureThreadMapIsPopulated(context);
+     threadMap.put(oldId, newId);
+     DatabaseFactory.getRemappedRecordsDatabase(context).addThreadMapping(oldId, newId);
+   }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/util/FeatureFlags.java b/app/src/main/java/org/thoughtcrime/securesms/util/FeatureFlags.java
+index 442f843..cfefc83 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/util/FeatureFlags.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/util/FeatureFlags.java
+@@ -46,7 +46,7 @@
+ 
+   private static final String TAG = Log.tag(FeatureFlags.class);
+ 
+-  private static final long FETCH_INTERVAL = TimeUnit.HOURS.toMillis(0);
++  private static final long FETCH_INTERVAL = TimeUnit.HOURS.toMillis(2);
+ 
+   private static final String USERNAMES                  = "android.usernames";
+   private static final String ATTACHMENTS_V3             = "android.attachmentsV3.2";
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/database/SmsDatabase.java b/app/src/main/java/org/thoughtcrime/securesms/database/SmsDatabase.java
+index 7375f21..32d6913 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/database/SmsDatabase.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/database/SmsDatabase.java
+@@ -673,7 +673,7 @@
+ 
+               db.insert(TABLE_NAME, null, values);
+ 
+-              DatabaseFactory.getThreadDatabase(context).update(threadId, true);
++              DatabaseFactory.getThreadDatabase(context).update(threadId, false);
+               notifyConversationListeners(threadId);
+               ApplicationDependencies.getJobManager().add(new TrimThreadJob(threadId));
+             });
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+index e7222e5..b5b00f4 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+@@ -1013,7 +1013,7 @@
+             return GroupChangeResult.SUCCESS;
+           },
+           (changeResult) -> {
+-            if (changeResult.isSuccess()) {
++            if (!changeResult.isSuccess()) {
+               Toast.makeText(ConversationActivity.this, GroupErrors.getUserDisplayMessage(changeResult.getFailureReason()), Toast.LENGTH_SHORT).show();
+             } else {
+               invalidateOptionsMenu();
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+index 9176b3d..b952ce4 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+@@ -893,7 +893,7 @@
+     case R.id.menu_conversation_settings:     handleConversationSettings();                      return true;
+     case R.id.menu_expiring_messages_off:
+     case R.id.menu_expiring_messages:         handleSelectMessageExpiration();                   return true;
+-    case android.R.id.home:                   onBackPressed();                                   return true;
++    case android.R.id.home:                   onNavigateUp();                                    return true;
+     }
+ 
+     return false;
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+index 9176b3d..b952ce4 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+@@ -893,7 +893,7 @@
+     case R.id.menu_conversation_settings:     handleConversationSettings();                      return true;
+     case R.id.menu_expiring_messages_off:
+     case R.id.menu_expiring_messages:         handleSelectMessageExpiration();                   return true;
+-    case android.R.id.home:                   onBackPressed();                                   return true;
++    case android.R.id.home:                   onNavigateUp();                                    return true;
+     }
+ 
+     return false;
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java b/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java
+index f1d3737..be7d9da 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java
+@@ -29,7 +29,7 @@
+ 
+   private static final Comparator<GroupMemberEntry.FullMember>         LOCAL_FIRST  = (m1, m2) -> Boolean.compare(m2.getMember().isLocalNumber(), m1.getMember().isLocalNumber());
+   private static final Comparator<GroupMemberEntry.FullMember>         ADMIN_FIRST  = (m1, m2) -> Boolean.compare(m2.isAdmin(), m1.isAdmin());
+-  private static final Comparator<GroupMemberEntry.FullMember>         ALPHABETICAL = (m1, m2) -> m1.getMember().toShortString(ApplicationDependencies.getApplication()).compareToIgnoreCase(m2.getMember().toShortString(ApplicationDependencies.getApplication()));
++  private static final Comparator<GroupMemberEntry.FullMember>         ALPHABETICAL = (m1, m2) -> m1.getMember().getDisplayName(ApplicationDependencies.getApplication()).compareToIgnoreCase(m2.getMember().getDisplayName(ApplicationDependencies.getApplication()));
+   private static final Comparator<? super GroupMemberEntry.FullMember> MEMBER_ORDER = ComparatorCompat.chain(LOCAL_FIRST)
+                                                                                                       .thenComparing(ADMIN_FIRST)
+                                                                                                       .thenComparing(ALPHABETICAL);
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java b/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java
+index f1d3737..be7d9da 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/groups/LiveGroup.java
+@@ -29,7 +29,7 @@
+ 
+   private static final Comparator<GroupMemberEntry.FullMember>         LOCAL_FIRST  = (m1, m2) -> Boolean.compare(m2.getMember().isLocalNumber(), m1.getMember().isLocalNumber());
+   private static final Comparator<GroupMemberEntry.FullMember>         ADMIN_FIRST  = (m1, m2) -> Boolean.compare(m2.isAdmin(), m1.isAdmin());
+-  private static final Comparator<GroupMemberEntry.FullMember>         ALPHABETICAL = (m1, m2) -> m1.getMember().toShortString(ApplicationDependencies.getApplication()).compareToIgnoreCase(m2.getMember().toShortString(ApplicationDependencies.getApplication()));
++  private static final Comparator<GroupMemberEntry.FullMember>         ALPHABETICAL = (m1, m2) -> m1.getMember().getDisplayName(ApplicationDependencies.getApplication()).compareToIgnoreCase(m2.getMember().getDisplayName(ApplicationDependencies.getApplication()));
+   private static final Comparator<? super GroupMemberEntry.FullMember> MEMBER_ORDER = ComparatorCompat.chain(LOCAL_FIRST)
+                                                                                                       .thenComparing(ADMIN_FIRST)
+                                                                                                       .thenComparing(ALPHABETICAL);
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogViewModel.java b/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogViewModel.java
+index fc12ded..3d6ae39 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogViewModel.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/logsubmit/SubmitDebugLogViewModel.java
+@@ -20,14 +20,14 @@
+ 
+   private final SubmitDebugLogRepository            repo;
+   private final DefaultValueLiveData<List<LogLine>> lines;
+-  private final DefaultValueLiveData<Mode>          mode;
++  private final MutableLiveData<Mode>               mode;
+ 
+   private List<LogLine> sourceLines;
+ 
+   private SubmitDebugLogViewModel() {
+     this.repo  = new SubmitDebugLogRepository();
+     this.lines = new DefaultValueLiveData<>(Collections.emptyList());
+-    this.mode  = new DefaultValueLiveData<>(Mode.NORMAL);
++    this.mode  = new MutableLiveData<>();
+ 
+     repo.getLogLines(result -> {
+       sourceLines = result;
+@@ -94,7 +94,7 @@
+   }
+ 
+   boolean onBackPressed() {
+-    if (mode.getValue().equals(Mode.EDIT)) {
++    if (mode.getValue() == Mode.EDIT) {
+       mode.setValue(Mode.NORMAL);
+       return true;
+     } else {
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java b/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java
+index 7c2561e..56c3c75 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java
+@@ -99,8 +99,7 @@
+     reminder.setMovementMethod(LinkMovementMethod.getInstance());
+ 
+     PinVerifier.Callback callback = getPinWatcherCallback(context, dialog, pinEditText, pinStatus, mainCallback);
+-    PinVerifier          verifier = SignalStore.kbsValues().isV2RegistrationLockEnabled()
+-                                    ? new V2PinVerifier()
++    PinVerifier          verifier = SignalStore.kbsValues().hasPin() ? new V2PinVerifier()
+                                     : new V1PinVerifier(context);
+ 
+     skip.setOnClickListener(v -> {
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java b/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java
+index 7c2561e..56c3c75 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/lock/SignalPinReminderDialog.java
+@@ -99,8 +99,7 @@
+     reminder.setMovementMethod(LinkMovementMethod.getInstance());
+ 
+     PinVerifier.Callback callback = getPinWatcherCallback(context, dialog, pinEditText, pinStatus, mainCallback);
+-    PinVerifier          verifier = SignalStore.kbsValues().isV2RegistrationLockEnabled()
+-                                    ? new V2PinVerifier()
++    PinVerifier          verifier = SignalStore.kbsValues().hasPin() ? new V2PinVerifier()
+                                     : new V1PinVerifier(context);
+ 
+     skip.setOnClickListener(v -> {
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/util/MessageRecordUtil.java b/app/src/main/java/org/thoughtcrime/securesms/util/MessageRecordUtil.java
+index e721de5..c949ec0 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/util/MessageRecordUtil.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/util/MessageRecordUtil.java
+@@ -30,7 +30,7 @@
+   }
+ 
+   public static boolean hasLocation(@NonNull MessageRecord messageRecord) {
+-    return messageRecord.isMms() && !Stream.of(((MmsMessageRecord) messageRecord).getSlideDeck().getSlides())
++    return messageRecord.isMms() && Stream.of(((MmsMessageRecord) messageRecord).getSlideDeck().getSlides())
+                                            .anyMatch(Slide::hasLocation);
+   }
+ }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/reactions/ReactionsConversationView.java b/app/src/main/java/org/thoughtcrime/securesms/reactions/ReactionsConversationView.java
+index a0d73e1..56c3ed5 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/reactions/ReactionsConversationView.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/reactions/ReactionsConversationView.java
+@@ -29,7 +29,8 @@
+ 
+ public class ReactionsConversationView extends LinearLayout {
+ 
+-  private static final int OUTER_MARGIN = ViewUtil.dpToPx(6);
++  // Normally 6dp, but we have 1dp left+right margin on the pills themselves
++  private static final int OUTER_MARGIN = ViewUtil.dpToPx(5);
+ 
+   private boolean              outgoing;
+   private List<ReactionRecord> records;
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
+index cbe614a..7b3065d 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/conversation/ConversationReactionOverlay.java
+@@ -539,7 +539,7 @@
+     }
+ 
+     private void update(float min, float max) {
+-      Preconditions.checkArgument(min < max, "Min must be less than max");
++      Preconditions.checkArgument(min <= max, "Min must be less than max");
+       this.min = min;
+       this.max = max;
+     }
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/megaphone/Megaphone.java b/app/src/main/java/org/thoughtcrime/securesms/megaphone/Megaphone.java
+index 4bf7092..5c355e4 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/megaphone/Megaphone.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/megaphone/Megaphone.java
+@@ -75,7 +75,7 @@
+   }
+ 
+   public @Nullable EventListener getSnoozeListener() {
+-    return buttonListener;
++    return snoozeListener;
+   }
+ 
+   public @Nullable EventListener getOnVisibleListener() {
+diff --git a/app/src/main/java/org/thoughtcrime/securesms/util/GroupUtil.java b/app/src/main/java/org/thoughtcrime/securesms/util/GroupUtil.java
+index cd79c47..b4a8e55 100644
+--- a/app/src/main/java/org/thoughtcrime/securesms/util/GroupUtil.java
++++ b/app/src/main/java/org/thoughtcrime/securesms/util/GroupUtil.java
+@@ -128,7 +128,7 @@
+ 
+       String title = groupContext.getName();
+ 
+-      if (members != null) {
++      if (members != null && members.size() > 0) {
+         description.append("\n");
+         description.append(context.getResources().getQuantityString(R.plurals.GroupUtil_joined_the_group,
+                                                                     members.size(), toString(members)));
+diff --git a/src/org/thoughtcrime/securesms/recipients/LiveRecipient.java b/src/org/thoughtcrime/securesms/recipients/LiveRecipient.java
+index d5a9eea..abfa5ee 100644
+--- a/src/org/thoughtcrime/securesms/recipients/LiveRecipient.java
++++ b/src/org/thoughtcrime/securesms/recipients/LiveRecipient.java
+@@ -193,7 +193,7 @@
+       List<Recipient> members  = Stream.of(groupRecord.get().getMembers()).filterNot(RecipientId::isUnknown).map(this::fetchRecipientFromDisk).toList();
+       Optional<Long>  avatarId = Optional.absent();
+ 
+-      if (settings.getGroupId() != null && GroupUtil.isMmsGroup(settings.getGroupId()) && title == null) {
++      if (settings.getGroupId() != null && !GroupUtil.isMmsGroup(settings.getGroupId()) && title == null) {
+         title = unnamedGroupName;
+       }
+ 
+diff --git a/src/org/thoughtcrime/securesms/util/MediaUtil.java b/src/org/thoughtcrime/securesms/util/MediaUtil.java
+index 2a77cc1..588e69a 100644
+--- a/src/org/thoughtcrime/securesms/util/MediaUtil.java
++++ b/src/org/thoughtcrime/securesms/util/MediaUtil.java
+@@ -302,7 +302,7 @@
+ 
+         mediaMetadataRetriever.setDataSource(mediaDataSource);
+         return mediaMetadataRetriever.getFrameAtTime(1000);
+-      } catch (IOException e) {
++      } catch (Exception e) { // XXX Some devices are hitting a native crash in setDataSource. Not much we can do.
+         Log.w(TAG, "failed to get thumbnail for video blob uri: " + uri, e);
+         return null;
+       }
+diff --git a/src/org/thoughtcrime/securesms/mediapreview/ImageMediaPreviewFragment.java b/src/org/thoughtcrime/securesms/mediapreview/ImageMediaPreviewFragment.java
+index 1c0dc59..bb38d80 100644
+--- a/src/org/thoughtcrime/securesms/mediapreview/ImageMediaPreviewFragment.java
++++ b/src/org/thoughtcrime/securesms/mediapreview/ImageMediaPreviewFragment.java
+@@ -14,7 +14,7 @@
+ import org.thoughtcrime.securesms.mms.GlideRequests;
+ import org.thoughtcrime.securesms.util.MediaUtil;
+ 
+-final class ImageMediaPreviewFragment extends MediaPreviewFragment {
++public final class ImageMediaPreviewFragment extends MediaPreviewFragment {
+ 
+   @Override
+   public void onCreate(@Nullable Bundle savedInstanceState) {
+diff --git a/src/org/thoughtcrime/securesms/mediapreview/VideoMediaPreviewFragment.java b/src/org/thoughtcrime/securesms/mediapreview/VideoMediaPreviewFragment.java
+index bfebc62..4e4067c 100644
+--- a/src/org/thoughtcrime/securesms/mediapreview/VideoMediaPreviewFragment.java
++++ b/src/org/thoughtcrime/securesms/mediapreview/VideoMediaPreviewFragment.java
+@@ -16,7 +16,7 @@
+ 
+ import java.io.IOException;
+ 
+-final class VideoMediaPreviewFragment extends MediaPreviewFragment {
++public final class VideoMediaPreviewFragment extends MediaPreviewFragment {
+ 
+   private static final String TAG = Log.tag(VideoMediaPreviewFragment.class);
+ 
+diff --git a/src/org/thoughtcrime/securesms/mediasend/camerax/CameraXModule.java b/src/org/thoughtcrime/securesms/mediasend/camerax/CameraXModule.java
+index 48f1f1b..e486a50 100644
+--- a/src/org/thoughtcrime/securesms/mediasend/camerax/CameraXModule.java
++++ b/src/org/thoughtcrime/securesms/mediasend/camerax/CameraXModule.java
+@@ -243,7 +243,7 @@
+     mImageCaptureConfigBuilder.setTargetRotation(getDisplaySurfaceRotation());
+     mImageCaptureConfigBuilder.setLensFacing(mCameraLensFacing);
+     mImageCaptureConfigBuilder.setCaptureMode(CameraXUtil.getOptimalCaptureMode());
+-    mImageCaptureConfigBuilder.setTargetResolution(new Size(1920, 1080));
++    mImageCaptureConfigBuilder.setTargetResolution(new Size(1920, 1920));
+     mImageCapture = new ImageCapture(mImageCaptureConfigBuilder.build());
+ 
+     mVideoCaptureConfigBuilder.setTargetRotation(getDisplaySurfaceRotation());
+diff --git a/src/org/thoughtcrime/securesms/service/WebRtcCallService.java b/src/org/thoughtcrime/securesms/service/WebRtcCallService.java
+index 1ded85c..173e027 100644
+--- a/src/org/thoughtcrime/securesms/service/WebRtcCallService.java
++++ b/src/org/thoughtcrime/securesms/service/WebRtcCallService.java
+@@ -735,7 +735,7 @@
+     DatabaseFactory.getSmsDatabase(this).insertReceivedCall(recipient.getAddress());
+ 
+     this.peerConnection.setAudioEnabled(true);
+-    this.peerConnection.setVideoEnabled(true);
++    this.peerConnection.setVideoEnabled(false);
+     this.dataChannel.send(new DataChannel.Buffer(ByteBuffer.wrap(Data.newBuilder().setConnected(Connected.newBuilder().setId(this.callId)).build().toByteArray()), false));
+ 
+     intent.putExtra(EXTRA_CALL_ID, callId);
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 4c9455d..13e3d77 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -1156,7 +1156,7 @@
+       } else {
+         return sender.isBlocked();
+       }
+-    } else if (content.getCallMessage().isPresent()) {
++    } else if (content.getCallMessage().isPresent() || content.getTypingMessage().isPresent()) {
+       return sender.isBlocked();
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/conversation/ConversationActivity.java b/src/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+index d07efde..998d08f 100644
+--- a/src/org/thoughtcrime/securesms/conversation/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/conversation/ConversationActivity.java
+@@ -1671,7 +1671,7 @@
+       updateDefaultSubscriptionId(recipient.getDefaultSubscriptionId());
+       initializeSecurity(isSecureText, isDefaultSms);
+ 
+-      if (!searchViewItem.isActionViewExpanded()) {
++      if (searchViewItem == null || !searchViewItem.isActionViewExpanded()) {
+         invalidateOptionsMenu();
+       }
+     });
+diff --git a/src/org/thoughtcrime/securesms/MediaPreviewActivity.java b/src/org/thoughtcrime/securesms/MediaPreviewActivity.java
+index 9af32fe..af002c0 100644
+--- a/src/org/thoughtcrime/securesms/MediaPreviewActivity.java
++++ b/src/org/thoughtcrime/securesms/MediaPreviewActivity.java
+@@ -241,7 +241,7 @@
+ 
+   private void initializeObservers() {
+     viewModel.getPreviewData().observe(this, previewData -> {
+-      if (previewData == null) {
++      if (previewData == null || mediaPager == null || mediaPager.getAdapter() == null) {
+         return;
+       }
+ 
+diff --git a/src/org/thoughtcrime/securesms/MediaPreviewActivity.java b/src/org/thoughtcrime/securesms/MediaPreviewActivity.java
+index 9af32fe..af002c0 100644
+--- a/src/org/thoughtcrime/securesms/MediaPreviewActivity.java
++++ b/src/org/thoughtcrime/securesms/MediaPreviewActivity.java
+@@ -241,7 +241,7 @@
+ 
+   private void initializeObservers() {
+     viewModel.getPreviewData().observe(this, previewData -> {
+-      if (previewData == null) {
++      if (previewData == null || mediaPager == null || mediaPager.getAdapter() == null) {
+         return;
+       }
+ 
+diff --git a/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java b/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java
+index 206806d..77ec1f5 100644
+--- a/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java
++++ b/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java
+@@ -283,7 +283,7 @@
+ 
+         out.close();
+ 
+-        byte[] ourMac   = mac.doFinal();
++        byte[] ourMac   = ByteUtil.trim(mac.doFinal(), 10);
+         byte[] theirMac = new byte[10];
+ 
+         try {
+@@ -293,7 +293,7 @@
+           throw new IOException(e);
+         }
+ 
+-        if (MessageDigest.isEqual(ourMac, theirMac)) {
++        if (!MessageDigest.isEqual(ourMac, theirMac)) {
+           //destination.delete();
+           throw new IOException("Bad MAC");
+         }
+@@ -314,9 +314,9 @@
+         System.arraycopy(frame, frame.length - 10, theirMac, 0, theirMac.length);
+ 
+         mac.update(frame, 0, frame.length - 10);
+-        byte[] ourMac = mac.doFinal();
++        byte[] ourMac = ByteUtil.trim(mac.doFinal(), 10);
+ 
+-        if (MessageDigest.isEqual(ourMac, theirMac)) {
++        if (!MessageDigest.isEqual(ourMac, theirMac)) {
+           throw new IOException("Bad MAC");
+         }
+ 
+diff --git a/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java b/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java
+index 206806d..77ec1f5 100644
+--- a/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java
++++ b/src/org/thoughtcrime/securesms/backup/FullBackupImporter.java
+@@ -283,7 +283,7 @@
+ 
+         out.close();
+ 
+-        byte[] ourMac   = mac.doFinal();
++        byte[] ourMac   = ByteUtil.trim(mac.doFinal(), 10);
+         byte[] theirMac = new byte[10];
+ 
+         try {
+@@ -293,7 +293,7 @@
+           throw new IOException(e);
+         }
+ 
+-        if (MessageDigest.isEqual(ourMac, theirMac)) {
++        if (!MessageDigest.isEqual(ourMac, theirMac)) {
+           //destination.delete();
+           throw new IOException("Bad MAC");
+         }
+@@ -314,9 +314,9 @@
+         System.arraycopy(frame, frame.length - 10, theirMac, 0, theirMac.length);
+ 
+         mac.update(frame, 0, frame.length - 10);
+-        byte[] ourMac = mac.doFinal();
++        byte[] ourMac = ByteUtil.trim(mac.doFinal(), 10);
+ 
+-        if (MessageDigest.isEqual(ourMac, theirMac)) {
++        if (!MessageDigest.isEqual(ourMac, theirMac)) {
+           throw new IOException("Bad MAC");
+         }
+ 
+diff --git a/src/org/thoughtcrime/securesms/RecipientPreferenceActivity.java b/src/org/thoughtcrime/securesms/RecipientPreferenceActivity.java
+index cb58a0e..7d82177 100644
+--- a/src/org/thoughtcrime/securesms/RecipientPreferenceActivity.java
++++ b/src/org/thoughtcrime/securesms/RecipientPreferenceActivity.java
+@@ -282,7 +282,7 @@
+               db.setMessageVibrate(recipient, NotificationChannels.getMessageVibrate(context, recipient) ? VibrateState.ENABLED : VibrateState.DISABLED);
+               return null;
+             }
+-          }.execute();
++          }.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
+         }
+       } else {
+         customNotificationsPref.setVisible(false);
+@@ -493,7 +493,7 @@
+             }
+             return null;
+           }
+-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, value);
++        }.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, value);
+ 
+         return false;
+       }
+@@ -562,7 +562,7 @@
+             }
+             return null;
+           }
+-        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
++        }.executeOnExecutor(AsyncTask.SERIAL_EXECUTOR);
+ 
+         return false;
+       }
+diff --git a/src/org/thoughtcrime/securesms/ApplicationContext.java b/src/org/thoughtcrime/securesms/ApplicationContext.java
+index 68a515a..9be8ded 100644
+--- a/src/org/thoughtcrime/securesms/ApplicationContext.java
++++ b/src/org/thoughtcrime/securesms/ApplicationContext.java
+@@ -265,7 +265,7 @@
+   private void initializePendingMessages() {
+     if (TextSecurePreferences.getNeedsMessagePull(this)) {
+       Log.i(TAG, "Scheduling a message fetch.");
+-      ApplicationContext.getInstance(this).getJobManager().add(new PushNotificationReceiveJob());
++      ApplicationContext.getInstance(this).getJobManager().add(new PushNotificationReceiveJob(this));
+       TextSecurePreferences.setNeedsMessagePull(this, false);
+     }
+   }
+diff --git a/src/org/thoughtcrime/securesms/recipients/Recipient.java b/src/org/thoughtcrime/securesms/recipients/Recipient.java
+index 602b5b9..4eeeb7a 100644
+--- a/src/org/thoughtcrime/securesms/recipients/Recipient.java
++++ b/src/org/thoughtcrime/securesms/recipients/Recipient.java
+@@ -426,7 +426,7 @@
+     if      (isResolving())            return new TransparentContactPhoto();
+     else if (isGroupRecipient())       return new ResourceContactPhoto(R.drawable.ic_group_white_24dp, R.drawable.ic_group_large);
+     else if (!TextUtils.isEmpty(name)) return new GeneratedContactPhoto(name, R.drawable.ic_profile_default);
+-    else                               return new ResourceContactPhoto(R.drawable.ic_profile_default);
++    else                               return new ResourceContactPhoto(R.drawable.ic_profile_default, R.drawable.ic_person_large);
+   }
+ 
+   public synchronized @Nullable ContactPhoto getContactPhoto() {
+diff --git a/src/org/thoughtcrime/securesms/contacts/avatars/ContactColors.java b/src/org/thoughtcrime/securesms/contacts/avatars/ContactColors.java
+index 12c1153..2a115c5 100644
+--- a/src/org/thoughtcrime/securesms/contacts/avatars/ContactColors.java
++++ b/src/org/thoughtcrime/securesms/contacts/avatars/ContactColors.java
+@@ -24,8 +24,7 @@
+       MaterialColor.WINTERGREEN,
+       MaterialColor.TEAL,
+       MaterialColor.BURLAP,
+-      MaterialColor.TAUPE,
+-      MaterialColor.STEEL
++      MaterialColor.TAUPE
+   ));
+ 
+   public static MaterialColor generateFor(@NonNull String name) {
+diff --git a/src/org/thoughtcrime/securesms/ConversationFragment.java b/src/org/thoughtcrime/securesms/ConversationFragment.java
+index 96a7b46..4c5069f 100644
+--- a/src/org/thoughtcrime/securesms/ConversationFragment.java
++++ b/src/org/thoughtcrime/securesms/ConversationFragment.java
+@@ -465,7 +465,7 @@
+ 
+     int limit  = args.getInt(KEY_LIMIT, PARTIAL_CONVERSATION_LIMIT);
+     int offset = 0;
+-    if (limit != 0 && startingPosition > limit) {
++    if (limit != 0 && startingPosition >= limit) {
+       offset = Math.max(startingPosition - (limit / 2) + 1, 0);
+       startingPosition -= offset - 1;
+     }
+diff --git a/src/org/thoughtcrime/securesms/logging/LogSecretProvider.java b/src/org/thoughtcrime/securesms/logging/LogSecretProvider.java
+index 8566a0e..e180a08 100644
+--- a/src/org/thoughtcrime/securesms/logging/LogSecretProvider.java
++++ b/src/org/thoughtcrime/securesms/logging/LogSecretProvider.java
+@@ -31,7 +31,7 @@
+   }
+ 
+   private static byte[] parseEncryptedSecret(String secret) {
+-    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
++    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+       KeyStoreHelper.SealedData encryptedSecret = KeyStoreHelper.SealedData.fromString(secret);
+       return KeyStoreHelper.unseal(encryptedSecret);
+     } else {
+diff --git a/src/org/thoughtcrime/securesms/ConversationFragment.java b/src/org/thoughtcrime/securesms/ConversationFragment.java
+index 6361353..39d0486 100644
+--- a/src/org/thoughtcrime/securesms/ConversationFragment.java
++++ b/src/org/thoughtcrime/securesms/ConversationFragment.java
+@@ -399,7 +399,7 @@
+     Intent composeIntent = new Intent(getActivity(), ShareActivity.class);
+     composeIntent.putExtra(Intent.EXTRA_TEXT, message.getDisplayBody().toString());
+     if (message.isMms()) {
+-      MediaMmsMessageRecord mediaMessage = (MediaMmsMessageRecord) message;
++      MmsMessageRecord mediaMessage = (MmsMessageRecord) message;
+       if (mediaMessage.containsMediaSlide()) {
+         Slide slide = mediaMessage.getSlideDeck().getSlides().get(0);
+         composeIntent.putExtra(Intent.EXTRA_STREAM, slide.getUri());
+diff --git a/src/org/thoughtcrime/securesms/util/BackupUtil.java b/src/org/thoughtcrime/securesms/util/BackupUtil.java
+index 106f8a8..eb887ab 100644
+--- a/src/org/thoughtcrime/securesms/util/BackupUtil.java
++++ b/src/org/thoughtcrime/securesms/util/BackupUtil.java
+@@ -67,7 +67,7 @@
+       File   backupDirectory = StorageUtil.getBackupDirectory(context);
+       File[] backups         = backupDirectory.listFiles();
+ 
+-      if (backups != null && backups.length > 5) {
++      if (backups != null && backups.length > 2) {
+         Arrays.sort(backups, (left, right) -> {
+           long leftTimestamp  = getBackupTimestamp(left);
+           long rightTimestamp = getBackupTimestamp(right);
+@@ -79,7 +79,7 @@
+           return (int)(rightTimestamp - leftTimestamp);
+         });
+ 
+-        for (int i=5;i<backups.length;i++) {
++        for (int i=2;i<backups.length;i++) {
+           Log.w(TAG, "Deleting: " + backups[i].getAbsolutePath());
+ 
+           if (!backups[i].delete()) {
+diff --git a/src/org/thoughtcrime/securesms/util/BackupUtil.java b/src/org/thoughtcrime/securesms/util/BackupUtil.java
+index 106f8a8..eb887ab 100644
+--- a/src/org/thoughtcrime/securesms/util/BackupUtil.java
++++ b/src/org/thoughtcrime/securesms/util/BackupUtil.java
+@@ -67,7 +67,7 @@
+       File   backupDirectory = StorageUtil.getBackupDirectory(context);
+       File[] backups         = backupDirectory.listFiles();
+ 
+-      if (backups != null && backups.length > 5) {
++      if (backups != null && backups.length > 2) {
+         Arrays.sort(backups, (left, right) -> {
+           long leftTimestamp  = getBackupTimestamp(left);
+           long rightTimestamp = getBackupTimestamp(right);
+@@ -79,7 +79,7 @@
+           return (int)(rightTimestamp - leftTimestamp);
+         });
+ 
+-        for (int i=5;i<backups.length;i++) {
++        for (int i=2;i<backups.length;i++) {
+           Log.w(TAG, "Deleting: " + backups[i].getAbsolutePath());
+ 
+           if (!backups[i].delete()) {
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index ce9e590..3c24057 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -589,7 +589,7 @@
+         @Override
+         protected Void doInBackground(Void... params) {
+           DatabaseFactory.getRecipientDatabase(ConversationActivity.this).setExpireMessages(recipient, expirationTime);
+-          OutgoingExpirationUpdateMessage outgoingMessage = new OutgoingExpirationUpdateMessage(getRecipient(), System.currentTimeMillis(), expirationTime * 1000);
++          OutgoingExpirationUpdateMessage outgoingMessage = new OutgoingExpirationUpdateMessage(getRecipient(), System.currentTimeMillis(), expirationTime * 1000L);
+           MessageSender.send(ConversationActivity.this, outgoingMessage, threadId, false, null);
+ 
+           return null;
+@@ -1627,7 +1627,7 @@
+ 
+       boolean    forceSms       = sendButton.isManualSelection() && sendButton.getSelectedTransport().isSms();
+       int        subscriptionId = sendButton.getSelectedTransport().getSimSubscriptionId().or(-1);
+-      long       expiresIn      = recipient.getExpireMessages() * 1000;
++      long       expiresIn      = recipient.getExpireMessages() * 1000L;
+       boolean    initiating     = threadId == -1;
+ 
+       Log.w(TAG, "isManual Selection: " + sendButton.isManualSelection());
+@@ -1842,7 +1842,7 @@
+       public void onSuccess(final @NonNull Pair<Uri, Long> result) {
+         boolean    forceSms       = sendButton.isManualSelection() && sendButton.getSelectedTransport().isSms();
+         int        subscriptionId = sendButton.getSelectedTransport().getSimSubscriptionId().or(-1);
+-        long       expiresIn      = recipient.getExpireMessages() * 1000;
++        long       expiresIn      = recipient.getExpireMessages() * 1000L;
+         boolean    initiating     = threadId == -1;
+         AudioSlide audioSlide     = new AudioSlide(ConversationActivity.this, result.first, result.second, MediaUtil.AUDIO_AAC, true);
+         SlideDeck  slideDeck      = new SlideDeck();
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index ce9e590..3c24057 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -589,7 +589,7 @@
+         @Override
+         protected Void doInBackground(Void... params) {
+           DatabaseFactory.getRecipientDatabase(ConversationActivity.this).setExpireMessages(recipient, expirationTime);
+-          OutgoingExpirationUpdateMessage outgoingMessage = new OutgoingExpirationUpdateMessage(getRecipient(), System.currentTimeMillis(), expirationTime * 1000);
++          OutgoingExpirationUpdateMessage outgoingMessage = new OutgoingExpirationUpdateMessage(getRecipient(), System.currentTimeMillis(), expirationTime * 1000L);
+           MessageSender.send(ConversationActivity.this, outgoingMessage, threadId, false, null);
+ 
+           return null;
+@@ -1627,7 +1627,7 @@
+ 
+       boolean    forceSms       = sendButton.isManualSelection() && sendButton.getSelectedTransport().isSms();
+       int        subscriptionId = sendButton.getSelectedTransport().getSimSubscriptionId().or(-1);
+-      long       expiresIn      = recipient.getExpireMessages() * 1000;
++      long       expiresIn      = recipient.getExpireMessages() * 1000L;
+       boolean    initiating     = threadId == -1;
+ 
+       Log.w(TAG, "isManual Selection: " + sendButton.isManualSelection());
+@@ -1842,7 +1842,7 @@
+       public void onSuccess(final @NonNull Pair<Uri, Long> result) {
+         boolean    forceSms       = sendButton.isManualSelection() && sendButton.getSelectedTransport().isSms();
+         int        subscriptionId = sendButton.getSelectedTransport().getSimSubscriptionId().or(-1);
+-        long       expiresIn      = recipient.getExpireMessages() * 1000;
++        long       expiresIn      = recipient.getExpireMessages() * 1000L;
+         boolean    initiating     = threadId == -1;
+         AudioSlide audioSlide     = new AudioSlide(ConversationActivity.this, result.first, result.second, MediaUtil.AUDIO_AAC, true);
+         SlideDeck  slideDeck      = new SlideDeck();
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index ce9e590..3c24057 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -589,7 +589,7 @@
+         @Override
+         protected Void doInBackground(Void... params) {
+           DatabaseFactory.getRecipientDatabase(ConversationActivity.this).setExpireMessages(recipient, expirationTime);
+-          OutgoingExpirationUpdateMessage outgoingMessage = new OutgoingExpirationUpdateMessage(getRecipient(), System.currentTimeMillis(), expirationTime * 1000);
++          OutgoingExpirationUpdateMessage outgoingMessage = new OutgoingExpirationUpdateMessage(getRecipient(), System.currentTimeMillis(), expirationTime * 1000L);
+           MessageSender.send(ConversationActivity.this, outgoingMessage, threadId, false, null);
+ 
+           return null;
+@@ -1627,7 +1627,7 @@
+ 
+       boolean    forceSms       = sendButton.isManualSelection() && sendButton.getSelectedTransport().isSms();
+       int        subscriptionId = sendButton.getSelectedTransport().getSimSubscriptionId().or(-1);
+-      long       expiresIn      = recipient.getExpireMessages() * 1000;
++      long       expiresIn      = recipient.getExpireMessages() * 1000L;
+       boolean    initiating     = threadId == -1;
+ 
+       Log.w(TAG, "isManual Selection: " + sendButton.isManualSelection());
+@@ -1842,7 +1842,7 @@
+       public void onSuccess(final @NonNull Pair<Uri, Long> result) {
+         boolean    forceSms       = sendButton.isManualSelection() && sendButton.getSelectedTransport().isSms();
+         int        subscriptionId = sendButton.getSelectedTransport().getSimSubscriptionId().or(-1);
+-        long       expiresIn      = recipient.getExpireMessages() * 1000;
++        long       expiresIn      = recipient.getExpireMessages() * 1000L;
+         boolean    initiating     = threadId == -1;
+         AudioSlide audioSlide     = new AudioSlide(ConversationActivity.this, result.first, result.second, MediaUtil.AUDIO_AAC, true);
+         SlideDeck  slideDeck      = new SlideDeck();
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 869b9cc..cd850ae 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -395,7 +395,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, true,
++                                                                 message.getExpiresInSeconds() * 1000L, true,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  Optional.absent(), message.getGroupInfo(),
+                                                                  Optional.absent());
+@@ -519,7 +519,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, false,
++                                                                 message.getExpiresInSeconds() * 1000L, false,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  message.getBody(),
+                                                                  message.getGroupInfo(),
+@@ -556,7 +556,7 @@
+ 
+     OutgoingExpirationUpdateMessage expirationUpdateMessage = new OutgoingExpirationUpdateMessage(recipient,
+                                                                                                   message.getTimestamp(),
+-                                                                                                  message.getMessage().getExpiresInSeconds() * 1000);
++                                                                                                  message.getMessage().getExpiresInSeconds() * 1000L);
+ 
+     long threadId  = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(recipient);
+     long messageId = database.insertMessageOutbox(expirationUpdateMessage, threadId, false, null);
+@@ -576,7 +576,7 @@
+     OutgoingMediaMessage  mediaMessage = new OutgoingMediaMessage(recipients, message.getMessage().getBody().orNull(),
+                                                                   PointerAttachment.forPointers(message.getMessage().getAttachments()),
+                                                                   message.getTimestamp(), -1,
+-                                                                  message.getMessage().getExpiresInSeconds() * 1000,
++                                                                  message.getMessage().getExpiresInSeconds() * 1000L,
+                                                                   ThreadDatabase.DistributionTypes.DEFAULT);
+ 
+     mediaMessage = new OutgoingSecureMediaMessage(mediaMessage);
+@@ -602,7 +602,7 @@
+                         .getExpiringMessageManager()
+                         .scheduleDeletion(messageId, true,
+                                           message.getExpirationStartTimestamp(),
+-                                          message.getMessage().getExpiresInSeconds() * 1000);
++                                          message.getMessage().getExpiresInSeconds() * 1000L);
+     }
+ 
+     return threadId;
+@@ -630,7 +630,7 @@
+                                                                 envelope.getSourceDevice(),
+                                                                 message.getTimestamp(), body,
+                                                                 message.getGroupInfo(),
+-                                                                message.getExpiresInSeconds() * 1000);
++                                                                message.getExpiresInSeconds() * 1000L);
+ 
+       textMessage = new IncomingEncryptedMessage(textMessage, body);
+       Optional<InsertResult> insertResult = database.insertMessageInbox(textMessage);
+@@ -652,7 +652,7 @@
+ 
+     Recipient recipient       = getSyncMessageDestination(message);
+     String    body            = message.getMessage().getBody().or("");
+-    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000;
++    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000L;
+ 
+     if (recipient.getExpireMessages() != message.getMessage().getExpiresInSeconds()) {
+       handleSynchronizeSentExpirationUpdate(message);
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 869b9cc..cd850ae 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -395,7 +395,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, true,
++                                                                 message.getExpiresInSeconds() * 1000L, true,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  Optional.absent(), message.getGroupInfo(),
+                                                                  Optional.absent());
+@@ -519,7 +519,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, false,
++                                                                 message.getExpiresInSeconds() * 1000L, false,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  message.getBody(),
+                                                                  message.getGroupInfo(),
+@@ -556,7 +556,7 @@
+ 
+     OutgoingExpirationUpdateMessage expirationUpdateMessage = new OutgoingExpirationUpdateMessage(recipient,
+                                                                                                   message.getTimestamp(),
+-                                                                                                  message.getMessage().getExpiresInSeconds() * 1000);
++                                                                                                  message.getMessage().getExpiresInSeconds() * 1000L);
+ 
+     long threadId  = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(recipient);
+     long messageId = database.insertMessageOutbox(expirationUpdateMessage, threadId, false, null);
+@@ -576,7 +576,7 @@
+     OutgoingMediaMessage  mediaMessage = new OutgoingMediaMessage(recipients, message.getMessage().getBody().orNull(),
+                                                                   PointerAttachment.forPointers(message.getMessage().getAttachments()),
+                                                                   message.getTimestamp(), -1,
+-                                                                  message.getMessage().getExpiresInSeconds() * 1000,
++                                                                  message.getMessage().getExpiresInSeconds() * 1000L,
+                                                                   ThreadDatabase.DistributionTypes.DEFAULT);
+ 
+     mediaMessage = new OutgoingSecureMediaMessage(mediaMessage);
+@@ -602,7 +602,7 @@
+                         .getExpiringMessageManager()
+                         .scheduleDeletion(messageId, true,
+                                           message.getExpirationStartTimestamp(),
+-                                          message.getMessage().getExpiresInSeconds() * 1000);
++                                          message.getMessage().getExpiresInSeconds() * 1000L);
+     }
+ 
+     return threadId;
+@@ -630,7 +630,7 @@
+                                                                 envelope.getSourceDevice(),
+                                                                 message.getTimestamp(), body,
+                                                                 message.getGroupInfo(),
+-                                                                message.getExpiresInSeconds() * 1000);
++                                                                message.getExpiresInSeconds() * 1000L);
+ 
+       textMessage = new IncomingEncryptedMessage(textMessage, body);
+       Optional<InsertResult> insertResult = database.insertMessageInbox(textMessage);
+@@ -652,7 +652,7 @@
+ 
+     Recipient recipient       = getSyncMessageDestination(message);
+     String    body            = message.getMessage().getBody().or("");
+-    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000;
++    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000L;
+ 
+     if (recipient.getExpireMessages() != message.getMessage().getExpiresInSeconds()) {
+       handleSynchronizeSentExpirationUpdate(message);
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 869b9cc..cd850ae 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -395,7 +395,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, true,
++                                                                 message.getExpiresInSeconds() * 1000L, true,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  Optional.absent(), message.getGroupInfo(),
+                                                                  Optional.absent());
+@@ -519,7 +519,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, false,
++                                                                 message.getExpiresInSeconds() * 1000L, false,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  message.getBody(),
+                                                                  message.getGroupInfo(),
+@@ -556,7 +556,7 @@
+ 
+     OutgoingExpirationUpdateMessage expirationUpdateMessage = new OutgoingExpirationUpdateMessage(recipient,
+                                                                                                   message.getTimestamp(),
+-                                                                                                  message.getMessage().getExpiresInSeconds() * 1000);
++                                                                                                  message.getMessage().getExpiresInSeconds() * 1000L);
+ 
+     long threadId  = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(recipient);
+     long messageId = database.insertMessageOutbox(expirationUpdateMessage, threadId, false, null);
+@@ -576,7 +576,7 @@
+     OutgoingMediaMessage  mediaMessage = new OutgoingMediaMessage(recipients, message.getMessage().getBody().orNull(),
+                                                                   PointerAttachment.forPointers(message.getMessage().getAttachments()),
+                                                                   message.getTimestamp(), -1,
+-                                                                  message.getMessage().getExpiresInSeconds() * 1000,
++                                                                  message.getMessage().getExpiresInSeconds() * 1000L,
+                                                                   ThreadDatabase.DistributionTypes.DEFAULT);
+ 
+     mediaMessage = new OutgoingSecureMediaMessage(mediaMessage);
+@@ -602,7 +602,7 @@
+                         .getExpiringMessageManager()
+                         .scheduleDeletion(messageId, true,
+                                           message.getExpirationStartTimestamp(),
+-                                          message.getMessage().getExpiresInSeconds() * 1000);
++                                          message.getMessage().getExpiresInSeconds() * 1000L);
+     }
+ 
+     return threadId;
+@@ -630,7 +630,7 @@
+                                                                 envelope.getSourceDevice(),
+                                                                 message.getTimestamp(), body,
+                                                                 message.getGroupInfo(),
+-                                                                message.getExpiresInSeconds() * 1000);
++                                                                message.getExpiresInSeconds() * 1000L);
+ 
+       textMessage = new IncomingEncryptedMessage(textMessage, body);
+       Optional<InsertResult> insertResult = database.insertMessageInbox(textMessage);
+@@ -652,7 +652,7 @@
+ 
+     Recipient recipient       = getSyncMessageDestination(message);
+     String    body            = message.getMessage().getBody().or("");
+-    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000;
++    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000L;
+ 
+     if (recipient.getExpireMessages() != message.getMessage().getExpiresInSeconds()) {
+       handleSynchronizeSentExpirationUpdate(message);
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 869b9cc..cd850ae 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -395,7 +395,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, true,
++                                                                 message.getExpiresInSeconds() * 1000L, true,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  Optional.absent(), message.getGroupInfo(),
+                                                                  Optional.absent());
+@@ -519,7 +519,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, false,
++                                                                 message.getExpiresInSeconds() * 1000L, false,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  message.getBody(),
+                                                                  message.getGroupInfo(),
+@@ -556,7 +556,7 @@
+ 
+     OutgoingExpirationUpdateMessage expirationUpdateMessage = new OutgoingExpirationUpdateMessage(recipient,
+                                                                                                   message.getTimestamp(),
+-                                                                                                  message.getMessage().getExpiresInSeconds() * 1000);
++                                                                                                  message.getMessage().getExpiresInSeconds() * 1000L);
+ 
+     long threadId  = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(recipient);
+     long messageId = database.insertMessageOutbox(expirationUpdateMessage, threadId, false, null);
+@@ -576,7 +576,7 @@
+     OutgoingMediaMessage  mediaMessage = new OutgoingMediaMessage(recipients, message.getMessage().getBody().orNull(),
+                                                                   PointerAttachment.forPointers(message.getMessage().getAttachments()),
+                                                                   message.getTimestamp(), -1,
+-                                                                  message.getMessage().getExpiresInSeconds() * 1000,
++                                                                  message.getMessage().getExpiresInSeconds() * 1000L,
+                                                                   ThreadDatabase.DistributionTypes.DEFAULT);
+ 
+     mediaMessage = new OutgoingSecureMediaMessage(mediaMessage);
+@@ -602,7 +602,7 @@
+                         .getExpiringMessageManager()
+                         .scheduleDeletion(messageId, true,
+                                           message.getExpirationStartTimestamp(),
+-                                          message.getMessage().getExpiresInSeconds() * 1000);
++                                          message.getMessage().getExpiresInSeconds() * 1000L);
+     }
+ 
+     return threadId;
+@@ -630,7 +630,7 @@
+                                                                 envelope.getSourceDevice(),
+                                                                 message.getTimestamp(), body,
+                                                                 message.getGroupInfo(),
+-                                                                message.getExpiresInSeconds() * 1000);
++                                                                message.getExpiresInSeconds() * 1000L);
+ 
+       textMessage = new IncomingEncryptedMessage(textMessage, body);
+       Optional<InsertResult> insertResult = database.insertMessageInbox(textMessage);
+@@ -652,7 +652,7 @@
+ 
+     Recipient recipient       = getSyncMessageDestination(message);
+     String    body            = message.getMessage().getBody().or("");
+-    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000;
++    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000L;
+ 
+     if (recipient.getExpireMessages() != message.getMessage().getExpiresInSeconds()) {
+       handleSynchronizeSentExpirationUpdate(message);
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 869b9cc..cd850ae 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -395,7 +395,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, true,
++                                                                 message.getExpiresInSeconds() * 1000L, true,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  Optional.absent(), message.getGroupInfo(),
+                                                                  Optional.absent());
+@@ -519,7 +519,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, false,
++                                                                 message.getExpiresInSeconds() * 1000L, false,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  message.getBody(),
+                                                                  message.getGroupInfo(),
+@@ -556,7 +556,7 @@
+ 
+     OutgoingExpirationUpdateMessage expirationUpdateMessage = new OutgoingExpirationUpdateMessage(recipient,
+                                                                                                   message.getTimestamp(),
+-                                                                                                  message.getMessage().getExpiresInSeconds() * 1000);
++                                                                                                  message.getMessage().getExpiresInSeconds() * 1000L);
+ 
+     long threadId  = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(recipient);
+     long messageId = database.insertMessageOutbox(expirationUpdateMessage, threadId, false, null);
+@@ -576,7 +576,7 @@
+     OutgoingMediaMessage  mediaMessage = new OutgoingMediaMessage(recipients, message.getMessage().getBody().orNull(),
+                                                                   PointerAttachment.forPointers(message.getMessage().getAttachments()),
+                                                                   message.getTimestamp(), -1,
+-                                                                  message.getMessage().getExpiresInSeconds() * 1000,
++                                                                  message.getMessage().getExpiresInSeconds() * 1000L,
+                                                                   ThreadDatabase.DistributionTypes.DEFAULT);
+ 
+     mediaMessage = new OutgoingSecureMediaMessage(mediaMessage);
+@@ -602,7 +602,7 @@
+                         .getExpiringMessageManager()
+                         .scheduleDeletion(messageId, true,
+                                           message.getExpirationStartTimestamp(),
+-                                          message.getMessage().getExpiresInSeconds() * 1000);
++                                          message.getMessage().getExpiresInSeconds() * 1000L);
+     }
+ 
+     return threadId;
+@@ -630,7 +630,7 @@
+                                                                 envelope.getSourceDevice(),
+                                                                 message.getTimestamp(), body,
+                                                                 message.getGroupInfo(),
+-                                                                message.getExpiresInSeconds() * 1000);
++                                                                message.getExpiresInSeconds() * 1000L);
+ 
+       textMessage = new IncomingEncryptedMessage(textMessage, body);
+       Optional<InsertResult> insertResult = database.insertMessageInbox(textMessage);
+@@ -652,7 +652,7 @@
+ 
+     Recipient recipient       = getSyncMessageDestination(message);
+     String    body            = message.getMessage().getBody().or("");
+-    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000;
++    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000L;
+ 
+     if (recipient.getExpireMessages() != message.getMessage().getExpiresInSeconds()) {
+       handleSynchronizeSentExpirationUpdate(message);
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 869b9cc..cd850ae 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -395,7 +395,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, true,
++                                                                 message.getExpiresInSeconds() * 1000L, true,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  Optional.absent(), message.getGroupInfo(),
+                                                                  Optional.absent());
+@@ -519,7 +519,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, false,
++                                                                 message.getExpiresInSeconds() * 1000L, false,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  message.getBody(),
+                                                                  message.getGroupInfo(),
+@@ -556,7 +556,7 @@
+ 
+     OutgoingExpirationUpdateMessage expirationUpdateMessage = new OutgoingExpirationUpdateMessage(recipient,
+                                                                                                   message.getTimestamp(),
+-                                                                                                  message.getMessage().getExpiresInSeconds() * 1000);
++                                                                                                  message.getMessage().getExpiresInSeconds() * 1000L);
+ 
+     long threadId  = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(recipient);
+     long messageId = database.insertMessageOutbox(expirationUpdateMessage, threadId, false, null);
+@@ -576,7 +576,7 @@
+     OutgoingMediaMessage  mediaMessage = new OutgoingMediaMessage(recipients, message.getMessage().getBody().orNull(),
+                                                                   PointerAttachment.forPointers(message.getMessage().getAttachments()),
+                                                                   message.getTimestamp(), -1,
+-                                                                  message.getMessage().getExpiresInSeconds() * 1000,
++                                                                  message.getMessage().getExpiresInSeconds() * 1000L,
+                                                                   ThreadDatabase.DistributionTypes.DEFAULT);
+ 
+     mediaMessage = new OutgoingSecureMediaMessage(mediaMessage);
+@@ -602,7 +602,7 @@
+                         .getExpiringMessageManager()
+                         .scheduleDeletion(messageId, true,
+                                           message.getExpirationStartTimestamp(),
+-                                          message.getMessage().getExpiresInSeconds() * 1000);
++                                          message.getMessage().getExpiresInSeconds() * 1000L);
+     }
+ 
+     return threadId;
+@@ -630,7 +630,7 @@
+                                                                 envelope.getSourceDevice(),
+                                                                 message.getTimestamp(), body,
+                                                                 message.getGroupInfo(),
+-                                                                message.getExpiresInSeconds() * 1000);
++                                                                message.getExpiresInSeconds() * 1000L);
+ 
+       textMessage = new IncomingEncryptedMessage(textMessage, body);
+       Optional<InsertResult> insertResult = database.insertMessageInbox(textMessage);
+@@ -652,7 +652,7 @@
+ 
+     Recipient recipient       = getSyncMessageDestination(message);
+     String    body            = message.getMessage().getBody().or("");
+-    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000;
++    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000L;
+ 
+     if (recipient.getExpireMessages() != message.getMessage().getExpiresInSeconds()) {
+       handleSynchronizeSentExpirationUpdate(message);
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index 869b9cc..cd850ae 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -395,7 +395,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, true,
++                                                                 message.getExpiresInSeconds() * 1000L, true,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  Optional.absent(), message.getGroupInfo(),
+                                                                  Optional.absent());
+@@ -519,7 +519,7 @@
+     Recipient            recipient    = getMessageDestination(envelope, message);
+     IncomingMediaMessage mediaMessage = new IncomingMediaMessage(Address.fromExternal(context, envelope.getSource()),
+                                                                  message.getTimestamp(), -1,
+-                                                                 message.getExpiresInSeconds() * 1000, false,
++                                                                 message.getExpiresInSeconds() * 1000L, false,
+                                                                  Optional.fromNullable(envelope.getRelay()),
+                                                                  message.getBody(),
+                                                                  message.getGroupInfo(),
+@@ -556,7 +556,7 @@
+ 
+     OutgoingExpirationUpdateMessage expirationUpdateMessage = new OutgoingExpirationUpdateMessage(recipient,
+                                                                                                   message.getTimestamp(),
+-                                                                                                  message.getMessage().getExpiresInSeconds() * 1000);
++                                                                                                  message.getMessage().getExpiresInSeconds() * 1000L);
+ 
+     long threadId  = DatabaseFactory.getThreadDatabase(context).getThreadIdFor(recipient);
+     long messageId = database.insertMessageOutbox(expirationUpdateMessage, threadId, false, null);
+@@ -576,7 +576,7 @@
+     OutgoingMediaMessage  mediaMessage = new OutgoingMediaMessage(recipients, message.getMessage().getBody().orNull(),
+                                                                   PointerAttachment.forPointers(message.getMessage().getAttachments()),
+                                                                   message.getTimestamp(), -1,
+-                                                                  message.getMessage().getExpiresInSeconds() * 1000,
++                                                                  message.getMessage().getExpiresInSeconds() * 1000L,
+                                                                   ThreadDatabase.DistributionTypes.DEFAULT);
+ 
+     mediaMessage = new OutgoingSecureMediaMessage(mediaMessage);
+@@ -602,7 +602,7 @@
+                         .getExpiringMessageManager()
+                         .scheduleDeletion(messageId, true,
+                                           message.getExpirationStartTimestamp(),
+-                                          message.getMessage().getExpiresInSeconds() * 1000);
++                                          message.getMessage().getExpiresInSeconds() * 1000L);
+     }
+ 
+     return threadId;
+@@ -630,7 +630,7 @@
+                                                                 envelope.getSourceDevice(),
+                                                                 message.getTimestamp(), body,
+                                                                 message.getGroupInfo(),
+-                                                                message.getExpiresInSeconds() * 1000);
++                                                                message.getExpiresInSeconds() * 1000L);
+ 
+       textMessage = new IncomingEncryptedMessage(textMessage, body);
+       Optional<InsertResult> insertResult = database.insertMessageInbox(textMessage);
+@@ -652,7 +652,7 @@
+ 
+     Recipient recipient       = getSyncMessageDestination(message);
+     String    body            = message.getMessage().getBody().or("");
+-    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000;
++    long      expiresInMillis = message.getMessage().getExpiresInSeconds() * 1000L;
+ 
+     if (recipient.getExpireMessages() != message.getMessage().getExpiresInSeconds()) {
+       handleSynchronizeSentExpirationUpdate(message);
+diff --git a/src/org/thoughtcrime/securesms/notifications/AndroidAutoReplyReceiver.java b/src/org/thoughtcrime/securesms/notifications/AndroidAutoReplyReceiver.java
+index 44b115e..bd8f5ee 100644
+--- a/src/org/thoughtcrime/securesms/notifications/AndroidAutoReplyReceiver.java
++++ b/src/org/thoughtcrime/securesms/notifications/AndroidAutoReplyReceiver.java
+@@ -71,7 +71,7 @@
+           long replyThreadId;
+ 
+           int  subscriptionId = recipient.getDefaultSubscriptionId().or(-1);
+-          long expiresIn      = recipient.getExpireMessages() * 1000;
++          long expiresIn      = recipient.getExpireMessages() * 1000L;
+ 
+           if (recipient.isGroupRecipient()) {
+             Log.w("AndroidAutoReplyReceiver", "GroupRecipient, Sending media message");
+diff --git a/src/org/thoughtcrime/securesms/notifications/RemoteReplyReceiver.java b/src/org/thoughtcrime/securesms/notifications/RemoteReplyReceiver.java
+index 5aeb5c5..674b080 100644
+--- a/src/org/thoughtcrime/securesms/notifications/RemoteReplyReceiver.java
++++ b/src/org/thoughtcrime/securesms/notifications/RemoteReplyReceiver.java
+@@ -65,7 +65,7 @@
+ 
+           Recipient recipient = Recipient.from(context, address, false);
+           int  subscriptionId = recipient.getDefaultSubscriptionId().or(-1);
+-          long expiresIn      = recipient.getExpireMessages() * 1000;
++          long expiresIn      = recipient.getExpireMessages() * 1000L;
+ 
+           if (recipient.isGroupRecipient()) {
+             OutgoingMediaMessage reply = new OutgoingMediaMessage(recipient, responseText.toString(), new LinkedList<>(), System.currentTimeMillis(), subscriptionId, expiresIn, 0);
+diff --git a/src/org/thoughtcrime/securesms/service/QuickResponseService.java b/src/org/thoughtcrime/securesms/service/QuickResponseService.java
+index 4ecd05a..7902941 100644
+--- a/src/org/thoughtcrime/securesms/service/QuickResponseService.java
++++ b/src/org/thoughtcrime/securesms/service/QuickResponseService.java
+@@ -50,7 +50,7 @@
+       Address   address        = Address.fromExternal(this, number);
+       Recipient recipient      = Recipient.from(this, address, false);
+       int       subscriptionId = recipient.getDefaultSubscriptionId().or(-1);
+-      long      expiresIn      = recipient.getExpireMessages() * 1000;
++      long      expiresIn      = recipient.getExpireMessages() * 1000L;
+ 
+       if (!TextUtils.isEmpty(content)) {
+         MessageSender.send(this, new OutgoingTextMessage(recipient, content, expiresIn, subscriptionId), -1, false, null);
+diff --git a/src/org/thoughtcrime/securesms/PassphraseRequiredActionBarActivity.java b/src/org/thoughtcrime/securesms/PassphraseRequiredActionBarActivity.java
+index 838d243..507ed7e 100644
+--- a/src/org/thoughtcrime/securesms/PassphraseRequiredActionBarActivity.java
++++ b/src/org/thoughtcrime/securesms/PassphraseRequiredActionBarActivity.java
+@@ -89,7 +89,7 @@
+   @Override
+   public void onMasterSecretCleared() {
+     Log.w(TAG, "onMasterSecretCleared()");
+-    if (isVisible) routeApplicationState(false);
++    if (isVisible) routeApplicationState(true);
+     else           finish();
+   }
+ 
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 9633364..50eed0d 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -1669,7 +1669,7 @@
+ 
+     Permissions.with(this)
+                .request(Manifest.permission.SEND_SMS)
+-               .ifNecessary(isSecureText || forceSms)
++               .ifNecessary(!isSecureText || forceSms)
+                .withPermanentDenialDialog(getString(R.string.ConversationActivity_signal_needs_sms_permission_in_order_to_send_an_sms))
+                .onAllGranted(() -> {
+                  attachmentManager.clear(glideRequests, false);
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index e871269..83c5056 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -1742,7 +1742,7 @@
+   }
+ 
+   private void updateToggleButtonState() {
+-    if (composeText.getTextTrimmed().length() == 0 && !attachmentManager.isAttachmentPresent()) {
++    if (composeText.getText().length() == 0 && !attachmentManager.isAttachmentPresent()) {
+       buttonToggle.display(attachButton);
+       quickAttachmentToggle.show();
+     } else {
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index e871269..83c5056 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -1742,7 +1742,7 @@
+   }
+ 
+   private void updateToggleButtonState() {
+-    if (composeText.getTextTrimmed().length() == 0 && !attachmentManager.isAttachmentPresent()) {
++    if (composeText.getText().length() == 0 && !attachmentManager.isAttachmentPresent()) {
+       buttonToggle.display(attachButton);
+       quickAttachmentToggle.show();
+     } else {
+diff --git a/src/org/thoughtcrime/securesms/components/ThreadPhotoRailView.java b/src/org/thoughtcrime/securesms/components/ThreadPhotoRailView.java
+index c1801c5..35f9f02 100644
+--- a/src/org/thoughtcrime/securesms/components/ThreadPhotoRailView.java
++++ b/src/org/thoughtcrime/securesms/components/ThreadPhotoRailView.java
+@@ -51,7 +51,7 @@
+     this.recyclerView = ViewUtil.findById(this, R.id.photo_list);
+     this.recyclerView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false));
+     this.recyclerView.setItemAnimator(new DefaultItemAnimator());
+-    this.recyclerView.setNestedScrollingEnabled(true);
++    this.recyclerView.setNestedScrollingEnabled(false);
+   }
+ 
+   public void setListener(@Nullable OnItemClickedListener listener) {
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index ef1b129..fedfe61 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -1603,7 +1603,7 @@
+       Log.w(TAG, "isManual Selection: " + sendButton.isManualSelection());
+       Log.w(TAG, "forceSms: " + forceSms);
+ 
+-      if ((!recipient.isMmsGroupRecipient() || recipient.getAddress().isEmail()) && !isMmsEnabled) {
++      if ((recipient.isMmsGroupRecipient() || recipient.getAddress().isEmail()) && !isMmsEnabled) {
+         handleManualMmsRequired();
+       } else if (!forceSms && identityRecords.isUnverified()) {
+         handleUnverifiedRecipients();
+diff --git a/src/org/thoughtcrime/securesms/jobs/MmsDownloadJob.java b/src/org/thoughtcrime/securesms/jobs/MmsDownloadJob.java
+index 1adb6e0..c98c8c9 100644
+--- a/src/org/thoughtcrime/securesms/jobs/MmsDownloadJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/MmsDownloadJob.java
+@@ -220,7 +220,7 @@
+       }
+     }
+ 
+-    if (members.size() > 1) {
++    if (members.size() > 2) {
+       group = Optional.of(Address.fromSerialized(DatabaseFactory.getGroupDatabase(context).getOrCreateGroupForMembers(new LinkedList<>(members), true)));
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/database/MmsDatabase.java b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+index 90889b2..248ae23 100644
+--- a/src/org/thoughtcrime/securesms/database/MmsDatabase.java
++++ b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+@@ -280,7 +280,7 @@
+       PhoneNumberUtil.MatchType match;
+ 
+       if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.toPhoneString());
++      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.serialize());
+ 
+       if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+           match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+@@ -295,7 +295,7 @@
+         PhoneNumberUtil.MatchType match;
+ 
+         if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.toPhoneString());
++        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.serialize());
+ 
+         if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+             match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+diff --git a/src/org/thoughtcrime/securesms/database/MmsDatabase.java b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+index 90889b2..248ae23 100644
+--- a/src/org/thoughtcrime/securesms/database/MmsDatabase.java
++++ b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+@@ -280,7 +280,7 @@
+       PhoneNumberUtil.MatchType match;
+ 
+       if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.toPhoneString());
++      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.serialize());
+ 
+       if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+           match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+@@ -295,7 +295,7 @@
+         PhoneNumberUtil.MatchType match;
+ 
+         if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.toPhoneString());
++        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.serialize());
+ 
+         if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+             match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+diff --git a/src/org/thoughtcrime/securesms/database/MmsDatabase.java b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+index 90889b2..248ae23 100644
+--- a/src/org/thoughtcrime/securesms/database/MmsDatabase.java
++++ b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+@@ -280,7 +280,7 @@
+       PhoneNumberUtil.MatchType match;
+ 
+       if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.toPhoneString());
++      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.serialize());
+ 
+       if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+           match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+@@ -295,7 +295,7 @@
+         PhoneNumberUtil.MatchType match;
+ 
+         if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.toPhoneString());
++        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.serialize());
+ 
+         if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+             match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+diff --git a/src/org/thoughtcrime/securesms/database/MmsDatabase.java b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+index 90889b2..248ae23 100644
+--- a/src/org/thoughtcrime/securesms/database/MmsDatabase.java
++++ b/src/org/thoughtcrime/securesms/database/MmsDatabase.java
+@@ -280,7 +280,7 @@
+       PhoneNumberUtil.MatchType match;
+ 
+       if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.toPhoneString());
++      else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, cc.serialize());
+ 
+       if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+           match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+@@ -295,7 +295,7 @@
+         PhoneNumberUtil.MatchType match;
+ 
+         if (localNumber == null) match = PhoneNumberUtil.MatchType.NO_MATCH;
+-        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.toPhoneString());
++        else                     match = PhoneNumberUtil.getInstance().isNumberMatch(localNumber, to.serialize());
+ 
+         if (match == PhoneNumberUtil.MatchType.NO_MATCH ||
+             match == PhoneNumberUtil.MatchType.NOT_A_NUMBER)
+diff --git a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+index e42fb2f..7acd5e5 100644
+--- a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
++++ b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+@@ -922,10 +922,10 @@
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+               addresses[i] = DelimiterUtil.escape(numberMigrator.migrate(address), ' ');
+-            } else if (recipientIds[i].equals("-1")) {
++            } else if (TextUtils.isEmpty(recipientIds[i]) || recipientIds[i].equals("-1")) {
+               addresses[i] = "Unknown";
+             } else {
+-              throw new AssertionError("Unable to resolve: " + recipientIds[i]);
++              throw new AssertionError("Unable to resolve: " + recipientIds[i] + ", recipientIdsList: '" + recipientIdsList + "'");
+             }
+ 
+             if (resolved != null) resolved.close();
+@@ -995,10 +995,10 @@
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+               addresses[i] = DelimiterUtil.escape(numberMigrator.migrate(address), ' ');
+-            } else if (recipientIds[i].equals("-1")) {
++            } else if (TextUtils.isEmpty(recipientIds[i]) || recipientIds[i].equals("-1")) {
+               addresses[i] = "Unknown";
+             } else {
+-              throw new AssertionError("Unable to resolve: " + recipientIds[i]);
++              throw new AssertionError("Unable to resolve: " + recipientIds[i] + ", recipientIdsList: '" + recipientIdsList + "'");
+             }
+ 
+             if (resolved != null) resolved.close();
+diff --git a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+index e42fb2f..7acd5e5 100644
+--- a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
++++ b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+@@ -922,10 +922,10 @@
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+               addresses[i] = DelimiterUtil.escape(numberMigrator.migrate(address), ' ');
+-            } else if (recipientIds[i].equals("-1")) {
++            } else if (TextUtils.isEmpty(recipientIds[i]) || recipientIds[i].equals("-1")) {
+               addresses[i] = "Unknown";
+             } else {
+-              throw new AssertionError("Unable to resolve: " + recipientIds[i]);
++              throw new AssertionError("Unable to resolve: " + recipientIds[i] + ", recipientIdsList: '" + recipientIdsList + "'");
+             }
+ 
+             if (resolved != null) resolved.close();
+@@ -995,10 +995,10 @@
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+               addresses[i] = DelimiterUtil.escape(numberMigrator.migrate(address), ' ');
+-            } else if (recipientIds[i].equals("-1")) {
++            } else if (TextUtils.isEmpty(recipientIds[i]) || recipientIds[i].equals("-1")) {
+               addresses[i] = "Unknown";
+             } else {
+-              throw new AssertionError("Unable to resolve: " + recipientIds[i]);
++              throw new AssertionError("Unable to resolve: " + recipientIds[i] + ", recipientIdsList: '" + recipientIdsList + "'");
+             }
+ 
+             if (resolved != null) resolved.close();
+diff --git a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+index 5420a60..79d0bbb 100644
+--- a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
++++ b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+@@ -911,14 +911,14 @@
+           long     threadId         = cursor.getLong(0);
+           String   recipientIdsList = cursor.getString(1);
+           String[] recipientIds     = recipientIdsList.split(" ");
+-          String[] numbers          = new String[recipientIds.length];
++          String[] addresses         = new String[recipientIds.length];
+ 
+           for (int i=0;i<recipientIds.length;i++) {
+             Cursor resolved = canonicalAddressDatabase.query("canonical_addresses", new String[] {"address"}, "_id = ?", new String[] {recipientIds[i]}, null, null, null);
+ 
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+-              numbers[i] = numberMigrator.migrate(address);
++              addresses[i] = numberMigrator.migrate(address);
+             } else {
+               throw new AssertionError("Unable to resolve: " + recipientIds[i]);
+             }
+@@ -927,7 +927,7 @@
+           }
+ 
+           ContentValues values = new ContentValues(1);
+-          values.put("recipient_ids", Util.join(numbers, " "));
++          values.put("recipient_ids", Util.join(addresses, " "));
+           db.update("thread", values, "_id = ?", new String[] {String.valueOf(threadId)});
+         }
+ 
+@@ -997,7 +997,7 @@
+ 
+           ContentValues values = new ContentValues(1);
+           values.put("recipient_ids", Util.join(addresses, " "));
+-          db.update("thread", values, "_id = ?", new String[] {String.valueOf(id)});
++          db.update("recipient_preferences", values, "_id = ?", new String[] {String.valueOf(id)});
+         }
+ 
+         if (cursor != null) cursor.close();
+@@ -1337,12 +1337,12 @@
+         if (localNumberImprecise.charAt(0) == '+')
+           localNumberImprecise = localNumberImprecise.substring(1);
+ 
+-        if (localNumberImprecise.length() == number.length() || number.length() > localNumberImprecise.length())
++        if (localNumberImprecise.length() == bareNumber.length() || bareNumber.length() > localNumberImprecise.length())
+           return "+" + number;
+ 
+-        int difference = localNumberImprecise.length() - number.length();
++        int difference = localNumberImprecise.length() - bareNumber.length();
+ 
+-        return "+" + localNumberImprecise.substring(0, difference) + number;
++        return "+" + localNumberImprecise.substring(0, difference) + bareNumber;
+       }
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+index 5420a60..79d0bbb 100644
+--- a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
++++ b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+@@ -911,14 +911,14 @@
+           long     threadId         = cursor.getLong(0);
+           String   recipientIdsList = cursor.getString(1);
+           String[] recipientIds     = recipientIdsList.split(" ");
+-          String[] numbers          = new String[recipientIds.length];
++          String[] addresses         = new String[recipientIds.length];
+ 
+           for (int i=0;i<recipientIds.length;i++) {
+             Cursor resolved = canonicalAddressDatabase.query("canonical_addresses", new String[] {"address"}, "_id = ?", new String[] {recipientIds[i]}, null, null, null);
+ 
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+-              numbers[i] = numberMigrator.migrate(address);
++              addresses[i] = numberMigrator.migrate(address);
+             } else {
+               throw new AssertionError("Unable to resolve: " + recipientIds[i]);
+             }
+@@ -927,7 +927,7 @@
+           }
+ 
+           ContentValues values = new ContentValues(1);
+-          values.put("recipient_ids", Util.join(numbers, " "));
++          values.put("recipient_ids", Util.join(addresses, " "));
+           db.update("thread", values, "_id = ?", new String[] {String.valueOf(threadId)});
+         }
+ 
+@@ -997,7 +997,7 @@
+ 
+           ContentValues values = new ContentValues(1);
+           values.put("recipient_ids", Util.join(addresses, " "));
+-          db.update("thread", values, "_id = ?", new String[] {String.valueOf(id)});
++          db.update("recipient_preferences", values, "_id = ?", new String[] {String.valueOf(id)});
+         }
+ 
+         if (cursor != null) cursor.close();
+@@ -1337,12 +1337,12 @@
+         if (localNumberImprecise.charAt(0) == '+')
+           localNumberImprecise = localNumberImprecise.substring(1);
+ 
+-        if (localNumberImprecise.length() == number.length() || number.length() > localNumberImprecise.length())
++        if (localNumberImprecise.length() == bareNumber.length() || bareNumber.length() > localNumberImprecise.length())
+           return "+" + number;
+ 
+-        int difference = localNumberImprecise.length() - number.length();
++        int difference = localNumberImprecise.length() - bareNumber.length();
+ 
+-        return "+" + localNumberImprecise.substring(0, difference) + number;
++        return "+" + localNumberImprecise.substring(0, difference) + bareNumber;
+       }
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+index 5420a60..79d0bbb 100644
+--- a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
++++ b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+@@ -911,14 +911,14 @@
+           long     threadId         = cursor.getLong(0);
+           String   recipientIdsList = cursor.getString(1);
+           String[] recipientIds     = recipientIdsList.split(" ");
+-          String[] numbers          = new String[recipientIds.length];
++          String[] addresses         = new String[recipientIds.length];
+ 
+           for (int i=0;i<recipientIds.length;i++) {
+             Cursor resolved = canonicalAddressDatabase.query("canonical_addresses", new String[] {"address"}, "_id = ?", new String[] {recipientIds[i]}, null, null, null);
+ 
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+-              numbers[i] = numberMigrator.migrate(address);
++              addresses[i] = numberMigrator.migrate(address);
+             } else {
+               throw new AssertionError("Unable to resolve: " + recipientIds[i]);
+             }
+@@ -927,7 +927,7 @@
+           }
+ 
+           ContentValues values = new ContentValues(1);
+-          values.put("recipient_ids", Util.join(numbers, " "));
++          values.put("recipient_ids", Util.join(addresses, " "));
+           db.update("thread", values, "_id = ?", new String[] {String.valueOf(threadId)});
+         }
+ 
+@@ -997,7 +997,7 @@
+ 
+           ContentValues values = new ContentValues(1);
+           values.put("recipient_ids", Util.join(addresses, " "));
+-          db.update("thread", values, "_id = ?", new String[] {String.valueOf(id)});
++          db.update("recipient_preferences", values, "_id = ?", new String[] {String.valueOf(id)});
+         }
+ 
+         if (cursor != null) cursor.close();
+@@ -1337,12 +1337,12 @@
+         if (localNumberImprecise.charAt(0) == '+')
+           localNumberImprecise = localNumberImprecise.substring(1);
+ 
+-        if (localNumberImprecise.length() == number.length() || number.length() > localNumberImprecise.length())
++        if (localNumberImprecise.length() == bareNumber.length() || bareNumber.length() > localNumberImprecise.length())
+           return "+" + number;
+ 
+-        int difference = localNumberImprecise.length() - number.length();
++        int difference = localNumberImprecise.length() - bareNumber.length();
+ 
+-        return "+" + localNumberImprecise.substring(0, difference) + number;
++        return "+" + localNumberImprecise.substring(0, difference) + bareNumber;
+       }
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+index 5420a60..79d0bbb 100644
+--- a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
++++ b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+@@ -911,14 +911,14 @@
+           long     threadId         = cursor.getLong(0);
+           String   recipientIdsList = cursor.getString(1);
+           String[] recipientIds     = recipientIdsList.split(" ");
+-          String[] numbers          = new String[recipientIds.length];
++          String[] addresses         = new String[recipientIds.length];
+ 
+           for (int i=0;i<recipientIds.length;i++) {
+             Cursor resolved = canonicalAddressDatabase.query("canonical_addresses", new String[] {"address"}, "_id = ?", new String[] {recipientIds[i]}, null, null, null);
+ 
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+-              numbers[i] = numberMigrator.migrate(address);
++              addresses[i] = numberMigrator.migrate(address);
+             } else {
+               throw new AssertionError("Unable to resolve: " + recipientIds[i]);
+             }
+@@ -927,7 +927,7 @@
+           }
+ 
+           ContentValues values = new ContentValues(1);
+-          values.put("recipient_ids", Util.join(numbers, " "));
++          values.put("recipient_ids", Util.join(addresses, " "));
+           db.update("thread", values, "_id = ?", new String[] {String.valueOf(threadId)});
+         }
+ 
+@@ -997,7 +997,7 @@
+ 
+           ContentValues values = new ContentValues(1);
+           values.put("recipient_ids", Util.join(addresses, " "));
+-          db.update("thread", values, "_id = ?", new String[] {String.valueOf(id)});
++          db.update("recipient_preferences", values, "_id = ?", new String[] {String.valueOf(id)});
+         }
+ 
+         if (cursor != null) cursor.close();
+@@ -1337,12 +1337,12 @@
+         if (localNumberImprecise.charAt(0) == '+')
+           localNumberImprecise = localNumberImprecise.substring(1);
+ 
+-        if (localNumberImprecise.length() == number.length() || number.length() > localNumberImprecise.length())
++        if (localNumberImprecise.length() == bareNumber.length() || bareNumber.length() > localNumberImprecise.length())
+           return "+" + number;
+ 
+-        int difference = localNumberImprecise.length() - number.length();
++        int difference = localNumberImprecise.length() - bareNumber.length();
+ 
+-        return "+" + localNumberImprecise.substring(0, difference) + number;
++        return "+" + localNumberImprecise.substring(0, difference) + bareNumber;
+       }
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+index 5420a60..79d0bbb 100644
+--- a/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
++++ b/src/org/thoughtcrime/securesms/database/DatabaseFactory.java
+@@ -911,14 +911,14 @@
+           long     threadId         = cursor.getLong(0);
+           String   recipientIdsList = cursor.getString(1);
+           String[] recipientIds     = recipientIdsList.split(" ");
+-          String[] numbers          = new String[recipientIds.length];
++          String[] addresses         = new String[recipientIds.length];
+ 
+           for (int i=0;i<recipientIds.length;i++) {
+             Cursor resolved = canonicalAddressDatabase.query("canonical_addresses", new String[] {"address"}, "_id = ?", new String[] {recipientIds[i]}, null, null, null);
+ 
+             if (resolved != null && resolved.moveToFirst()) {
+               String address = resolved.getString(0);
+-              numbers[i] = numberMigrator.migrate(address);
++              addresses[i] = numberMigrator.migrate(address);
+             } else {
+               throw new AssertionError("Unable to resolve: " + recipientIds[i]);
+             }
+@@ -927,7 +927,7 @@
+           }
+ 
+           ContentValues values = new ContentValues(1);
+-          values.put("recipient_ids", Util.join(numbers, " "));
++          values.put("recipient_ids", Util.join(addresses, " "));
+           db.update("thread", values, "_id = ?", new String[] {String.valueOf(threadId)});
+         }
+ 
+@@ -997,7 +997,7 @@
+ 
+           ContentValues values = new ContentValues(1);
+           values.put("recipient_ids", Util.join(addresses, " "));
+-          db.update("thread", values, "_id = ?", new String[] {String.valueOf(id)});
++          db.update("recipient_preferences", values, "_id = ?", new String[] {String.valueOf(id)});
+         }
+ 
+         if (cursor != null) cursor.close();
+@@ -1337,12 +1337,12 @@
+         if (localNumberImprecise.charAt(0) == '+')
+           localNumberImprecise = localNumberImprecise.substring(1);
+ 
+-        if (localNumberImprecise.length() == number.length() || number.length() > localNumberImprecise.length())
++        if (localNumberImprecise.length() == bareNumber.length() || bareNumber.length() > localNumberImprecise.length())
+           return "+" + number;
+ 
+-        int difference = localNumberImprecise.length() - number.length();
++        int difference = localNumberImprecise.length() - bareNumber.length();
+ 
+-        return "+" + localNumberImprecise.substring(0, difference) + number;
++        return "+" + localNumberImprecise.substring(0, difference) + bareNumber;
+       }
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/util/Util.java b/src/org/thoughtcrime/securesms/util/Util.java
+index 0848bd9..453afbc 100644
+--- a/src/org/thoughtcrime/securesms/util/Util.java
++++ b/src/org/thoughtcrime/securesms/util/Util.java
+@@ -428,7 +428,7 @@
+     ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+ 
+     return (VERSION.SDK_INT >= VERSION_CODES.KITKAT && activityManager.isLowRamDevice()) ||
+-           activityManager.getMemoryClass() <= 64;
++           activityManager.getLargeMemoryClass() <= 64;
+   }
+ 
+   public static int clamp(int value, int min, int max) {
+diff --git a/src/org/thoughtcrime/securesms/util/Util.java b/src/org/thoughtcrime/securesms/util/Util.java
+index 0848bd9..453afbc 100644
+--- a/src/org/thoughtcrime/securesms/util/Util.java
++++ b/src/org/thoughtcrime/securesms/util/Util.java
+@@ -428,7 +428,7 @@
+     ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+ 
+     return (VERSION.SDK_INT >= VERSION_CODES.KITKAT && activityManager.isLowRamDevice()) ||
+-           activityManager.getMemoryClass() <= 64;
++           activityManager.getLargeMemoryClass() <= 64;
+   }
+ 
+   public static int clamp(int value, int min, int max) {
+diff --git a/src/org/thoughtcrime/securesms/ApplicationPreferencesActivity.java b/src/org/thoughtcrime/securesms/ApplicationPreferencesActivity.java
+index ada1ad0..0266765 100644
+--- a/src/org/thoughtcrime/securesms/ApplicationPreferencesActivity.java
++++ b/src/org/thoughtcrime/securesms/ApplicationPreferencesActivity.java
+@@ -215,7 +215,7 @@
+       this.findPreference(PREFERENCE_CATEGORY_APPEARANCE).setIcon(appearance);
+       this.findPreference(PREFERENCE_CATEGORY_CHATS).setIcon(chats);
+       this.findPreference(PREFERENCE_CATEGORY_DEVICES).setIcon(devices);
+-      this.findPreference(PREFERENCE_CATEGORY_ADVANCED).setIcon(appearance);
++      this.findPreference(PREFERENCE_CATEGORY_ADVANCED).setIcon(advanced);
+     }
+ 
+     private class CategoryClickListener implements Preference.OnPreferenceClickListener {
+diff --git a/src/org/thoughtcrime/securesms/ConversationListItem.java b/src/org/thoughtcrime/securesms/ConversationListItem.java
+index ed231c7..141d940 100644
+--- a/src/org/thoughtcrime/securesms/ConversationListItem.java
++++ b/src/org/thoughtcrime/securesms/ConversationListItem.java
+@@ -202,7 +202,7 @@
+   }
+ 
+   private void setStatusIcons(ThreadRecord thread) {
+-    if (!thread.isOutgoing()) {
++    if (!thread.isOutgoing() || thread.isOutgoingCall()) {
+       deliveryStatusIndicator.setNone();
+       alertView.setNone();
+     } else if (thread.isFailed()) {
+diff --git a/src/org/thoughtcrime/securesms/ContactSelectionListFragment.java b/src/org/thoughtcrime/securesms/ContactSelectionListFragment.java
+index 131de64..15cdcc2 100644
+--- a/src/org/thoughtcrime/securesms/ContactSelectionListFragment.java
++++ b/src/org/thoughtcrime/securesms/ContactSelectionListFragment.java
+@@ -74,7 +74,7 @@
+ 
+   @Override
+   public void onActivityCreated(Bundle icicle) {
+-    super.onCreate(icicle);
++    super.onActivityCreated(icicle);
+     initializeCursor();
+   }
+ 
+diff --git a/src/org/thoughtcrime/securesms/video/VideoPlayer.java b/src/org/thoughtcrime/securesms/video/VideoPlayer.java
+index 3e1f602..6a61d7c 100644
+--- a/src/org/thoughtcrime/securesms/video/VideoPlayer.java
++++ b/src/org/thoughtcrime/securesms/video/VideoPlayer.java
+@@ -75,7 +75,7 @@
+   public void setVideoSource(@NonNull MasterSecret masterSecret, @NonNull VideoSlide videoSource)
+       throws IOException
+   {
+-    if (Build.VERSION.SDK_INT >= 14) setExoViewSource(masterSecret, videoSource);
++    if (Build.VERSION.SDK_INT >= 16) setExoViewSource(masterSecret, videoSource);
+     else                             setVideoViewSource(masterSecret, videoSource);
+   }
+ 
+diff --git a/src/org/thoughtcrime/securesms/service/WebRtcCallService.java b/src/org/thoughtcrime/securesms/service/WebRtcCallService.java
+index ab722b5..119ee0a 100644
+--- a/src/org/thoughtcrime/securesms/service/WebRtcCallService.java
++++ b/src/org/thoughtcrime/securesms/service/WebRtcCallService.java
+@@ -748,7 +748,11 @@
+       else                   this.lockManager.updatePhoneState(LockManager.PhoneState.IN_CALL);
+     }
+ 
+-    if (localVideoEnabled && !audioManager.isSpeakerphoneOn() && !audioManager.isBluetoothScoOn()) {
++    if (localVideoEnabled &&
++        !audioManager.isSpeakerphoneOn() &&
++        !audioManager.isBluetoothScoOn() &&
++        !audioManager.isWiredHeadsetOn())
++    {
+       audioManager.setSpeakerphoneOn(true);
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 85e1843..d0ae41c 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -974,7 +974,10 @@
+   }
+ 
+   private void initializeBetaCalling() {
+-    if (!TextSecurePreferences.isWebrtcCallingEnabled(this) || isGroupConversation()) {
++    if (!TextSecurePreferences.isPushRegistered(this)       ||
++        !TextSecurePreferences.isWebrtcCallingEnabled(this) ||
++        isGroupConversation())
++    {
+       return;
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java b/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java
+index 8dc15df..049b1e2 100644
+--- a/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java
++++ b/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java
+@@ -542,7 +542,7 @@
+         protected Void doInBackground(Void... params) {
+           MasterSecret masterSecret  = KeyCachingService.getMasterSecret(context);
+           int          reminderCount = intent.getIntExtra("reminder_count", 0);
+-          MessageNotifier.updateNotification(context, masterSecret, true, true, reminderCount + 1);
++          MessageNotifier.updateNotification(context, masterSecret, true, false, reminderCount + 1);
+ 
+           return null;
+         }
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 795fd75..513ce4b 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -946,7 +946,7 @@
+   }
+ 
+   private void initializeBetaCalling() {
+-    if (!TextSecurePreferences.isWebrtcCallingEnabled(this)) {
++    if (!TextSecurePreferences.isWebrtcCallingEnabled(this) || isGroupConversation()) {
+       return;
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushSendJob.java b/src/org/thoughtcrime/securesms/jobs/PushSendJob.java
+index 6f79d5f..ca23d00 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushSendJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushSendJob.java
+@@ -63,7 +63,7 @@
+           ContentType.isVideoType(attachment.getContentType()))
+       {
+         try {
+-          if (attachment.getDataUri() == null) throw new IOException("Assertion failed, outgoing attachment has no data!");
++          if (attachment.getDataUri() == null || attachment.getSize() == 0) throw new IOException("Assertion failed, outgoing attachment has no data!");
+           InputStream is = PartAuthority.getAttachmentStream(context, masterSecret, attachment.getDataUri());
+           attachments.add(SignalServiceAttachment.newStreamBuilder()
+                                                  .withStream(is)
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushSendJob.java b/src/org/thoughtcrime/securesms/jobs/PushSendJob.java
+index 6f79d5f..ca23d00 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushSendJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushSendJob.java
+@@ -63,7 +63,7 @@
+           ContentType.isVideoType(attachment.getContentType()))
+       {
+         try {
+-          if (attachment.getDataUri() == null) throw new IOException("Assertion failed, outgoing attachment has no data!");
++          if (attachment.getDataUri() == null || attachment.getSize() == 0) throw new IOException("Assertion failed, outgoing attachment has no data!");
+           InputStream is = PartAuthority.getAttachmentStream(context, masterSecret, attachment.getDataUri());
+           attachments.add(SignalServiceAttachment.newStreamBuilder()
+                                                  .withStream(is)
+diff --git a/src/org/thoughtcrime/securesms/giph/ui/GiphyFragment.java b/src/org/thoughtcrime/securesms/giph/ui/GiphyFragment.java
+index d90065c..b465b43 100644
+--- a/src/org/thoughtcrime/securesms/giph/ui/GiphyFragment.java
++++ b/src/org/thoughtcrime/securesms/giph/ui/GiphyFragment.java
+@@ -66,7 +66,7 @@
+   public void onLoadFinished(Loader<List<GiphyImage>> loader, List<GiphyImage> data) {
+     this.loadingProgress.setVisibility(View.GONE);
+ 
+-    if (data.isEmpty()) noResultsView.setVisibility(View.VISIBLE);
++    if (data == null || data.isEmpty()) noResultsView.setVisibility(View.VISIBLE);
+     else                noResultsView.setVisibility(View.GONE);
+ 
+     this.giphyAdapter.setImages(data);
+diff --git a/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java b/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
+index d505ebe..33f22f8 100644
+--- a/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
++++ b/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
+@@ -6,7 +6,7 @@
+ 
+ public class PushMediaConstraints extends MediaConstraints {
+   private static final int MAX_IMAGE_DIMEN_LOWMEM = 768;
+-  private static final int MAX_IMAGE_DIMEN        = 1280;
++  private static final int MAX_IMAGE_DIMEN        = 2048;
+   private static final int KB                     = 1024;
+   private static final int MB                     = 1024 * KB;
+ 
+@@ -22,7 +22,7 @@
+ 
+   @Override
+   public int getImageMaxSize() {
+-    return 420 * KB;
++    return 4 * MB;
+   }
+ 
+   @Override
+diff --git a/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java b/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
+index d505ebe..33f22f8 100644
+--- a/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
++++ b/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
+@@ -6,7 +6,7 @@
+ 
+ public class PushMediaConstraints extends MediaConstraints {
+   private static final int MAX_IMAGE_DIMEN_LOWMEM = 768;
+-  private static final int MAX_IMAGE_DIMEN        = 1280;
++  private static final int MAX_IMAGE_DIMEN        = 2048;
+   private static final int KB                     = 1024;
+   private static final int MB                     = 1024 * KB;
+ 
+@@ -22,7 +22,7 @@
+ 
+   @Override
+   public int getImageMaxSize() {
+-    return 420 * KB;
++    return 4 * MB;
+   }
+ 
+   @Override
+diff --git a/src/org/thoughtcrime/securesms/ConversationAdapter.java b/src/org/thoughtcrime/securesms/ConversationAdapter.java
+index 88f5501..23bc221 100644
+--- a/src/org/thoughtcrime/securesms/ConversationAdapter.java
++++ b/src/org/thoughtcrime/securesms/ConversationAdapter.java
+@@ -196,7 +196,7 @@
+     MessageRecord messageRecord = getMessageRecord(id, cursor, type);
+ 
+     if (messageRecord.isGroupAction() || messageRecord.isCallLog() || messageRecord.isJoined() || 
+-        messageRecord.isExpirationTimerUpdate() || messageRecord.isEndSessin() || messageRecord.isIdentityUpdate()) 
++        messageRecord.isExpirationTimerUpdate() || messageRecord.isEndSession() || messageRecord.isIdentityUpdate()) 
+    {
+       return MESSAGE_TYPE_UPDATE;
+     } else if (messageRecord.isOutgoing()) {
+diff --git a/src/org/thoughtcrime/securesms/ConversationAdapter.java b/src/org/thoughtcrime/securesms/ConversationAdapter.java
+index 88f5501..23bc221 100644
+--- a/src/org/thoughtcrime/securesms/ConversationAdapter.java
++++ b/src/org/thoughtcrime/securesms/ConversationAdapter.java
+@@ -196,7 +196,7 @@
+     MessageRecord messageRecord = getMessageRecord(id, cursor, type);
+ 
+     if (messageRecord.isGroupAction() || messageRecord.isCallLog() || messageRecord.isJoined() || 
+-        messageRecord.isExpirationTimerUpdate() || messageRecord.isEndSessin() || messageRecord.isIdentityUpdate()) 
++        messageRecord.isExpirationTimerUpdate() || messageRecord.isEndSession() || messageRecord.isIdentityUpdate()) 
+    {
+       return MESSAGE_TYPE_UPDATE;
+     } else if (messageRecord.isOutgoing()) {
+diff --git a/src/org/thoughtcrime/securesms/contacts/ContactSelectionListItem.java b/src/org/thoughtcrime/securesms/contacts/ContactSelectionListItem.java
+index 6638d1e..c7b16a6 100644
+--- a/src/org/thoughtcrime/securesms/contacts/ContactSelectionListItem.java
++++ b/src/org/thoughtcrime/securesms/contacts/ContactSelectionListItem.java
+@@ -58,7 +58,9 @@
+     } else if (!TextUtils.isEmpty(number)) {
+       this.recipients = RecipientFactory.getRecipientsFromString(getContext(), number, true);
+ 
+-      if (this.recipients.getPrimaryRecipient().getName() != null) {
++      if (this.recipients.getPrimaryRecipient() != null &&
++          this.recipients.getPrimaryRecipient().getName() != null)
++      {
+         name = this.recipients.getPrimaryRecipient().getName();
+       }
+ 
+diff --git a/src/org/thoughtcrime/securesms/database/ThreadDatabase.java b/src/org/thoughtcrime/securesms/database/ThreadDatabase.java
+index ff24dae..c16ab17 100644
+--- a/src/org/thoughtcrime/securesms/database/ThreadDatabase.java
++++ b/src/org/thoughtcrime/securesms/database/ThreadDatabase.java
+@@ -436,7 +436,7 @@
+   }
+ 
+   private @Nullable Uri getAttachmentUriFor(MessageRecord record) {
+-    if (!record.isMms() || record.isMmsNotification()) return null;
++    if (!record.isMms() || record.isMmsNotification() || record.isGroupAction()) return null;
+ 
+     SlideDeck slideDeck = ((MediaMmsMessageRecord)record).getSlideDeck();
+     Slide     thumbnail = slideDeck.getThumbnailSlide();
+diff --git a/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java b/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java
+index 43d4d9d..7dae60b 100644
+--- a/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java
++++ b/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java
+@@ -150,7 +150,7 @@
+     notifyConversationListeners(DatabaseFactory.getMmsDatabase(context).getThreadIdForMessage(mmsId));
+   }
+ 
+-  public @Nullable Attachment getAttachment(AttachmentId attachmentId) {
++  public @Nullable DatabaseAttachment getAttachment(AttachmentId attachmentId) {
+     SQLiteDatabase database = databaseHelper.getReadableDatabase();
+     Cursor cursor           = null;
+ 
+@@ -518,9 +518,9 @@
+         return stream;
+       }
+ 
+-      Attachment attachment = getAttachment(attachmentId);
++      DatabaseAttachment attachment = getAttachment(attachmentId);
+ 
+-      if (attachment == null || attachment.isInProgress()) {
++      if (attachment == null || !attachment.hasData()) {
+         return null;
+       }
+ 
+diff --git a/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java b/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java
+index 43d4d9d..7dae60b 100644
+--- a/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java
++++ b/src/org/thoughtcrime/securesms/database/AttachmentDatabase.java
+@@ -150,7 +150,7 @@
+     notifyConversationListeners(DatabaseFactory.getMmsDatabase(context).getThreadIdForMessage(mmsId));
+   }
+ 
+-  public @Nullable Attachment getAttachment(AttachmentId attachmentId) {
++  public @Nullable DatabaseAttachment getAttachment(AttachmentId attachmentId) {
+     SQLiteDatabase database = databaseHelper.getReadableDatabase();
+     Cursor cursor           = null;
+ 
+@@ -518,9 +518,9 @@
+         return stream;
+       }
+ 
+-      Attachment attachment = getAttachment(attachmentId);
++      DatabaseAttachment attachment = getAttachment(attachmentId);
+ 
+-      if (attachment == null || attachment.isInProgress()) {
++      if (attachment == null || !attachment.hasData()) {
+         return null;
+       }
+ 
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 6809c1f..58a6883 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -775,7 +775,7 @@
+   {
+     final SettableFuture<Boolean> future = new SettableFuture<>();
+ 
+-    handleSecurityChange(currentSecureText || isGroupConversation(),
++    handleSecurityChange(currentSecureText || isPushGroupConversation(),
+                          currentSecureVoice && !isGroupConversation());
+ 
+     new AsyncTask<Recipients, Void, Pair<Boolean, Boolean>>() {
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 6809c1f..58a6883 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -775,7 +775,7 @@
+   {
+     final SettableFuture<Boolean> future = new SettableFuture<>();
+ 
+-    handleSecurityChange(currentSecureText || isGroupConversation(),
++    handleSecurityChange(currentSecureText || isPushGroupConversation(),
+                          currentSecureVoice && !isGroupConversation());
+ 
+     new AsyncTask<Recipients, Void, Pair<Boolean, Boolean>>() {
+diff --git a/src/org/thoughtcrime/securesms/database/CursorRecyclerViewAdapter.java b/src/org/thoughtcrime/securesms/database/CursorRecyclerViewAdapter.java
+index 18e09be..6855cd8 100644
+--- a/src/org/thoughtcrime/securesms/database/CursorRecyclerViewAdapter.java
++++ b/src/org/thoughtcrime/securesms/database/CursorRecyclerViewAdapter.java
+@@ -40,7 +40,7 @@
+       cursor.registerDataSetObserver(observer);
+     }
+ 
+-    setHasStableIds(true);
++    setHasStableIds(false);
+   }
+ 
+   public Context getContext() {
+diff --git a/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java b/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java
+index 66c8fa1..e9f032b 100644
+--- a/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java
++++ b/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java
+@@ -35,7 +35,7 @@
+     final int          end   = getSelectionEnd();
+ 
+     getText().replace(Math.min(start, end), Math.max(start, end), emoji);
+-    setSelection(end + emoji.length());
++    setSelection(start + emoji.length());
+   }
+ 
+   @Override public void invalidateDrawable(@NonNull Drawable drawable) {
+diff --git a/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java b/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java
+index 66c8fa1..e9f032b 100644
+--- a/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java
++++ b/src/org/thoughtcrime/securesms/components/emoji/EmojiEditText.java
+@@ -35,7 +35,7 @@
+     final int          end   = getSelectionEnd();
+ 
+     getText().replace(Math.min(start, end), Math.max(start, end), emoji);
+-    setSelection(end + emoji.length());
++    setSelection(start + emoji.length());
+   }
+ 
+   @Override public void invalidateDrawable(@NonNull Drawable drawable) {
+diff --git a/src/org/thoughtcrime/securesms/notifications/AbstractNotificationBuilder.java b/src/org/thoughtcrime/securesms/notifications/AbstractNotificationBuilder.java
+index 1ad3f7d..28f2550 100644
+--- a/src/org/thoughtcrime/securesms/notifications/AbstractNotificationBuilder.java
++++ b/src/org/thoughtcrime/securesms/notifications/AbstractNotificationBuilder.java
+@@ -46,7 +46,7 @@
+     String[] blinkPatternArray   = parseBlinkPattern(ledBlinkPattern, ledBlinkPatternCustom);
+ 
+     if      (ringtone != null)                       setSound(ringtone);
+-    else if (TextUtils.isEmpty(defaultRingtoneName)) setSound(Uri.parse(defaultRingtoneName));
++    else if (!TextUtils.isEmpty(defaultRingtoneName)) setSound(Uri.parse(defaultRingtoneName));
+ 
+     if (vibrate == RecipientPreferenceDatabase.VibrateState.ENABLED ||
+         (vibrate == RecipientPreferenceDatabase.VibrateState.DEFAULT && defaultVibrate))
+diff --git a/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java b/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java
+index ff32c9f..feee947 100644
+--- a/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java
++++ b/src/org/thoughtcrime/securesms/notifications/MessageNotifier.java
+@@ -419,7 +419,7 @@
+     public void onReceive(Context context, Intent intent) {
+       MasterSecret masterSecret  = KeyCachingService.getMasterSecret(context);
+       int          reminderCount = intent.getIntExtra("reminder_count", 0);
+-      MessageNotifier.updateNotification(context, masterSecret, true, reminderCount + 1);
++      MessageNotifier.updateNotification(context, masterSecret, true, true, reminderCount + 1);
+     }
+   }
+ 
+diff --git a/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java b/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java
+index e07bac3..0d2281c 100644
+--- a/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java
++++ b/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java
+@@ -26,7 +26,7 @@
+   }
+ 
+   public void hide() {
+-    if (!isEnabled()) return;
++    if (!isEnabled() || getVisibility() == GONE) return;
+     final Animation animation = AnimationUtils.loadAnimation(getContext(), R.anim.slide_to_right);
+     animation.setAnimationListener(new AnimationListener() {
+       @Override public void onAnimationStart(Animation animation) {}
+@@ -39,7 +39,7 @@
+   }
+ 
+   public void show() {
+-    if (!isEnabled()) return;
++    if (!isEnabled() || getVisibility() == VISIBLE) return;
+     setVisibility(VISIBLE);
+     animateWith(AnimationUtils.loadAnimation(getContext(), R.anim.slide_from_right));
+   }
+diff --git a/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java b/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java
+index e07bac3..0d2281c 100644
+--- a/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java
++++ b/src/org/thoughtcrime/securesms/components/camera/HidingImageButton.java
+@@ -26,7 +26,7 @@
+   }
+ 
+   public void hide() {
+-    if (!isEnabled()) return;
++    if (!isEnabled() || getVisibility() == GONE) return;
+     final Animation animation = AnimationUtils.loadAnimation(getContext(), R.anim.slide_to_right);
+     animation.setAnimationListener(new AnimationListener() {
+       @Override public void onAnimationStart(Animation animation) {}
+@@ -39,7 +39,7 @@
+   }
+ 
+   public void show() {
+-    if (!isEnabled()) return;
++    if (!isEnabled() || getVisibility() == VISIBLE) return;
+     setVisibility(VISIBLE);
+     animateWith(AnimationUtils.loadAnimation(getContext(), R.anim.slide_from_right));
+   }
+diff --git a/src/org/thoughtcrime/securesms/components/emoji/EmojiProvider.java b/src/org/thoughtcrime/securesms/components/emoji/EmojiProvider.java
+index 3ee1f31..2f66ca5 100644
+--- a/src/org/thoughtcrime/securesms/components/emoji/EmojiProvider.java
++++ b/src/org/thoughtcrime/securesms/components/emoji/EmojiProvider.java
+@@ -45,7 +45,7 @@
+   private static final Pattern EMOJI_RANGE = Pattern.compile("[\\u20a0-\\u32ff\\ud83c\\udc00-\\ud83d\\udeff\\udbb9\\udce5-\\udbb9\\udcee]");
+ 
+   public static final double EMOJI_FULL       = 1.00;
+-  public static final double EMOJI_SMALL      = 0.60;
++  public static final double EMOJI_SMALL      = 0.90;
+   public static final int    EMOJI_RAW_HEIGHT = 64;
+   public static final int    EMOJI_RAW_WIDTH  = 64;
+   public static final int    EMOJI_VERT_PAD   = 0;
+diff --git a/src/org/thoughtcrime/securesms/mms/MmsMediaConstraints.java b/src/org/thoughtcrime/securesms/mms/MmsMediaConstraints.java
+index 45f775f..1fb5578 100644
+--- a/src/org/thoughtcrime/securesms/mms/MmsMediaConstraints.java
++++ b/src/org/thoughtcrime/securesms/mms/MmsMediaConstraints.java
+@@ -1,7 +1,7 @@
+ package org.thoughtcrime.securesms.mms;
+ 
+ public class MmsMediaConstraints extends MediaConstraints {
+-  private static final int MAX_IMAGE_DIMEN  = 1280;
++  private static final int MAX_IMAGE_DIMEN  = 1024;
+   public  static final int MAX_MESSAGE_SIZE = 280 * 1024;
+ 
+   @Override
+diff --git a/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java b/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
+index 6dbe924..5be3e56 100644
+--- a/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
++++ b/src/org/thoughtcrime/securesms/mms/PushMediaConstraints.java
+@@ -17,7 +17,7 @@
+ 
+   @Override
+   public int getImageMaxSize() {
+-    return 300 * KB;
++    return 420 * KB;
+   }
+ 
+   @Override
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 7c16fa3..90be95a 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -974,7 +974,7 @@
+     boolean refreshFragment = (threadId != this.threadId);
+     this.threadId = threadId;
+ 
+-    if (fragment == null) {
++    if (fragment == null || !fragment.isVisible() || isFinishing()) {
+       return;
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 7c16fa3..90be95a 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -974,7 +974,7 @@
+     boolean refreshFragment = (threadId != this.threadId);
+     this.threadId = threadId;
+ 
+-    if (fragment == null) {
++    if (fragment == null || !fragment.isVisible() || isFinishing()) {
+       return;
+     }
+ 
+diff --git a/src/org/thoughtcrime/securesms/jobs/SendJob.java b/src/org/thoughtcrime/securesms/jobs/SendJob.java
+index 3d8ad73..51d62b5 100644
+--- a/src/org/thoughtcrime/securesms/jobs/SendJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/SendJob.java
+@@ -53,7 +53,11 @@
+     } catch (MmsException me) {
+       throw new UndeliverableMessageException(me);
+     }
+-    return new SendReq(message.getPduHeaders(), body);
++    return new SendReq(message.getPduHeaders(),
++                       body,
++                       message.getDatabaseMessageId(),
++                       message.getDatabaseMessageBox(),
++                       message.getSentTimestamp());
+   }
+ 
+   private PduPart getResolvedPart(MasterSecret masterSecret, MediaConstraints constraints,
+diff --git a/src/org/thoughtcrime/securesms/GroupCreateActivity.java b/src/org/thoughtcrime/securesms/GroupCreateActivity.java
+index eee9181..d59d97b 100644
+--- a/src/org/thoughtcrime/securesms/GroupCreateActivity.java
++++ b/src/org/thoughtcrime/securesms/GroupCreateActivity.java
+@@ -387,8 +387,9 @@
+               Recipient recipient = RecipientFactory.getRecipientsFromString(this, numberData.number, false)
+                                                     .getPrimaryRecipient();
+ 
+-              if (!selectedContacts.contains(recipient)
+-                  && (existingContacts == null || !existingContacts.contains(recipient))) {
++              if (!selectedContacts.contains(recipient)                               &&
++                  (existingContacts == null || !existingContacts.contains(recipient)) &&
++                  recipient != null) {
+                 addSelectedContact(recipient);
+               }
+             } catch (RecipientFormattingException e) {
+diff --git a/src/org/thoughtcrime/securesms/jobs/AttachmentDownloadJob.java b/src/org/thoughtcrime/securesms/jobs/AttachmentDownloadJob.java
+index 38795dc..ce04e40 100644
+--- a/src/org/thoughtcrime/securesms/jobs/AttachmentDownloadJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/AttachmentDownloadJob.java
+@@ -124,7 +124,7 @@
+ 
+   private File createTempFile() throws InvalidPartException {
+     try {
+-      File file = File.createTempFile("push-attachment", "tmp");
++      File file = File.createTempFile("push-attachment", "tmp", context.getCacheDir());
+       file.deleteOnExit();
+ 
+       return file;
+diff --git a/src/org/thoughtcrime/securesms/database/loaders/ConversationListLoader.java b/src/org/thoughtcrime/securesms/database/loaders/ConversationListLoader.java
+index abc0b27..d4a3475 100644
+--- a/src/org/thoughtcrime/securesms/database/loaders/ConversationListLoader.java
++++ b/src/org/thoughtcrime/securesms/database/loaders/ConversationListLoader.java
+@@ -21,8 +21,7 @@
+   @Override
+   public Cursor getCursor() {
+     if (filter != null && filter.trim().length() != 0) {
+-      List<String> numbers = ContactAccessor.getInstance()
+-          .getNumbersForThreadSearchFilter(filter, context);
++      List<String> numbers = ContactAccessor.getInstance().getNumbersForThreadSearchFilter(context, filter);
+ 
+       return DatabaseFactory.getThreadDatabase(context).getFilteredConversationList(numbers);
+     } else {
+diff --git a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+index fae163f..5d95f88 100644
+--- a/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/PushDecryptJob.java
+@@ -64,7 +64,7 @@
+   @Override
+   public void onAdded() {
+     if (KeyCachingService.getMasterSecret(context) == null) {
+-      MessageNotifier.updateNotification(context, null);
++      MessageNotifier.updateNotification(context, null, -2);
+     }
+   }
+ 
+diff --git a/src/org/thoughtcrime/securesms/jobs/SmsDecryptJob.java b/src/org/thoughtcrime/securesms/jobs/SmsDecryptJob.java
+index bd8f343..e22905a 100644
+--- a/src/org/thoughtcrime/securesms/jobs/SmsDecryptJob.java
++++ b/src/org/thoughtcrime/securesms/jobs/SmsDecryptJob.java
+@@ -56,7 +56,7 @@
+   @Override
+   public void onAdded() {
+     if (KeyCachingService.getMasterSecret(context) == null) {
+-      MessageNotifier.updateNotification(context, null);
++      MessageNotifier.updateNotification(context, null, -2);
+     }
+   }
+ 
+diff --git a/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java b/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java
+index 98d1dbf..8804897 100644
+--- a/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java
++++ b/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java
+@@ -515,7 +515,7 @@
+         @Override
+         protected Integer doInBackground(Void... params) {
+           try {
+-            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context);
++            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context, e164number, password);
+             int registrationId = TextSecurePreferences.getLocalRegistrationId(context);
+ 
+             accountManager.verifyAccount(code, signalingKey, true, registrationId);
+@@ -608,7 +608,7 @@
+         @Override
+         protected Integer doInBackground(Void... params) {
+           try {
+-            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context);
++            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context, e164number, password);
+             accountManager.requestVoiceVerificationCode();
+ 
+             return SUCCESS;
+diff --git a/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java b/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java
+index 98d1dbf..8804897 100644
+--- a/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java
++++ b/src/org/thoughtcrime/securesms/RegistrationProgressActivity.java
+@@ -515,7 +515,7 @@
+         @Override
+         protected Integer doInBackground(Void... params) {
+           try {
+-            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context);
++            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context, e164number, password);
+             int registrationId = TextSecurePreferences.getLocalRegistrationId(context);
+ 
+             accountManager.verifyAccount(code, signalingKey, true, registrationId);
+@@ -608,7 +608,7 @@
+         @Override
+         protected Integer doInBackground(Void... params) {
+           try {
+-            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context);
++            TextSecureAccountManager accountManager = TextSecureCommunicationFactory.createManager(context, e164number, password);
+             accountManager.requestVoiceVerificationCode();
+ 
+             return SUCCESS;
+diff --git a/src/org/thoughtcrime/securesms/service/RegistrationService.java b/src/org/thoughtcrime/securesms/service/RegistrationService.java
+index 8685ac6..7d80fa4 100644
+--- a/src/org/thoughtcrime/securesms/service/RegistrationService.java
++++ b/src/org/thoughtcrime/securesms/service/RegistrationService.java
+@@ -180,7 +180,7 @@
+     int          registrationId = TextSecurePreferences.getLocalRegistrationId(this);
+ 
+     if (registrationId == 0) {
+-      registrationId = KeyHelper.generateRegistrationId();
++      registrationId = KeyHelper.generateRegistrationId(false);
+       TextSecurePreferences.setLocalRegistrationId(this, registrationId);
+     }
+ 
+diff --git a/library/src/org/whispersystems/textsecure/crypto/ecc/Curve.java b/library/src/org/whispersystems/textsecure/crypto/ecc/Curve.java
+index 763c9e4..9cd2213 100644
+--- a/library/src/org/whispersystems/textsecure/crypto/ecc/Curve.java
++++ b/library/src/org/whispersystems/textsecure/crypto/ecc/Curve.java
+@@ -23,7 +23,7 @@
+ 
+   public  static final int NIST_TYPE  = 0x02;
+   private static final int NIST_TYPE2 = 0x03;
+-  public  static final int DJB_TYPE   = 0x04;
++  public  static final int DJB_TYPE   = 0x05;
+ 
+   public static ECKeyPair generateKeyPairForType(int keyType) {
+     if (keyType == DJB_TYPE) {
+diff --git a/src/org/thoughtcrime/securesms/crypto/MessageMac.java b/src/org/thoughtcrime/securesms/crypto/MessageMac.java
+index 4da7c0f..fc86be7 100644
+--- a/src/org/thoughtcrime/securesms/crypto/MessageMac.java
++++ b/src/org/thoughtcrime/securesms/crypto/MessageMac.java
+@@ -61,7 +61,7 @@
+   }
+ 	
+   public static byte[] getMessageWithoutMac(byte[] message) throws InvalidMacException {
+-    if (message.length <= MAC_LENGTH)
++    if (message == null || message.length <= MAC_LENGTH)
+       throw new InvalidMacException("Message shorter than MAC!");
+ 		
+     byte[] strippedMessage = new byte[message.length - MAC_LENGTH];
+diff --git a/src/org/thoughtcrime/securesms/crypto/MessageMac.java b/src/org/thoughtcrime/securesms/crypto/MessageMac.java
+index 4da7c0f..fc86be7 100644
+--- a/src/org/thoughtcrime/securesms/crypto/MessageMac.java
++++ b/src/org/thoughtcrime/securesms/crypto/MessageMac.java
+@@ -61,7 +61,7 @@
+   }
+ 	
+   public static byte[] getMessageWithoutMac(byte[] message) throws InvalidMacException {
+-    if (message.length <= MAC_LENGTH)
++    if (message == null || message.length <= MAC_LENGTH)
+       throw new InvalidMacException("Message shorter than MAC!");
+ 		
+     byte[] strippedMessage = new byte[message.length - MAC_LENGTH];
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 1de2fe1..8b07b0c 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -339,7 +339,7 @@
+     List<String> recipientStrings = new LinkedList<String>();
+ 
+     for (Recipient recipient : getRecipients().getRecipientsList()) {
+-      recipientStrings.add(recipient.getName());
++      recipientStrings.add(recipient.toShortString());
+     }
+ 
+     AlertDialog.Builder builder = new AlertDialog.Builder(this);
+diff --git a/src/org/thoughtcrime/securesms/ConversationActivity.java b/src/org/thoughtcrime/securesms/ConversationActivity.java
+index 1de2fe1..8b07b0c 100644
+--- a/src/org/thoughtcrime/securesms/ConversationActivity.java
++++ b/src/org/thoughtcrime/securesms/ConversationActivity.java
+@@ -339,7 +339,7 @@
+     List<String> recipientStrings = new LinkedList<String>();
+ 
+     for (Recipient recipient : getRecipients().getRecipientsList()) {
+-      recipientStrings.add(recipient.getName());
++      recipientStrings.add(recipient.toShortString());
+     }
+ 
+     AlertDialog.Builder builder = new AlertDialog.Builder(this);
