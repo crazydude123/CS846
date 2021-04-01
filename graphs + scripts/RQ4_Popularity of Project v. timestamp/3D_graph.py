@@ -35,7 +35,7 @@ for j in yy[:]:
       yy.remove(j)
 
 for j in zz[:]:
-   if j>=10000 or j<0:
+   if j>=3000 or j<0:
       del xx[zz.index(j)]
       del yy[zz.index(j)]
       zz.remove(j)

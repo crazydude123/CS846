@@ -20,12 +20,12 @@ xx = list(x)
 yy = list(y)
 
 for j in xx[:]:
-   if j>=360 or j<0:
+   if j>=2000 or j<0:
       del yy[xx.index(j)]
       xx.remove(j)
 
 for j in yy[:]:
-   if j>=1000 or j<0:
+   if j>=500 or j<0:
       del xx[yy.index(j)]
       yy.remove(j)
 
@@ -34,10 +34,24 @@ for i in df:
    if i[0]<0 or i[1]<0:
       print(i)
 
+
 pca = PCA(2)
 df = pca.fit_transform(df)
 
-kmeans = KMeans(n_clusters= 4)
+from sklearn.metrics import silhouette_score
+
+sil = []
+kmax = 10
+
+# dissimilarity would not be defined for a single cluster, thus, minimum number of clusters should be 2
+for k in range(2, kmax+1):
+   kmeans = KMeans(n_clusters = k).fit(df)
+   labels = kmeans.labels_
+   sil.append(silhouette_score(df, labels, metric = 'euclidean'))
+print(sil)
+print(df.shape)
+
+kmeans = KMeans(n_clusters= 3)
 label = kmeans.fit_predict(df)
 a = dict(Counter(label))
 print(a)
