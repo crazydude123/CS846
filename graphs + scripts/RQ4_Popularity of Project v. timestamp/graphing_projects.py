@@ -8,6 +8,7 @@ from sklearn.datasets import load_digits
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from collections import Counter
+import statistics
 
 col_list = ["Forks", "TimeDiffInMins"]
 
@@ -20,12 +21,12 @@ xx = list(x)
 yy = list(y)
 
 for j in xx[:]:
-   if j>=5000 or j<0:
+   if j>=1000 or j<0:
       del yy[xx.index(j)]
       xx.remove(j)
 
 for j in yy[:]:
-   if j>=4000 or j<0:
+   if j>=1600 or j<0:
       del xx[yy.index(j)]
       yy.remove(j)
 
@@ -44,12 +45,33 @@ labeldict = dict(zip(colors, categories))
 df["Color"] = df["Forks"].apply(lambda x: colordict[x])
 countt = Counter(df["Color"])
 
+#Logic to calculate Forks avg. Time
+j = {}
+bb = {}
+length = len(df["Color"])
+for i in set(df["Color"]):
+   gg = []
+   vou = 0.0
+   cut = 0
+   summ = 0
+   for k in range(0, length):
+      if (df["Color"][k]==i):
+         gg.append(df["TimeDiffInMins"][k])
+   j[i]= statistics.mean(gg)
+   try:
+      bb[i]= round(statistics.stdev(gg), 2)
+   except:
+      bb[i] = 0
+print(j)
+
+
 groups = df.groupby("Color")
 print(groups)
 
-plt.title("Bug fix times vs. Projects")
+plt.title("Bug fix times vs. Projects; Label: Count : Mean : StdDev")
 for name, group in groups:
-   plt.plot(group.TimeDiffInMins , group.Forks , marker = 'o', linestyle='', markersize=6, label = countt[name])
+   hh = [countt[name],j[name], bb[name]]
+   plt.plot(group.TimeDiffInMins , group.Forks , marker = 'o', linestyle='', markersize=6, label = hh)
 
 plt.xlabel("Time in minutes")
 plt.ylabel("Number of forks")
