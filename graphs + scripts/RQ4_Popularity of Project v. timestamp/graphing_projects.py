@@ -21,12 +21,12 @@ xx = list(x)
 yy = list(y)
 
 for j in xx[:]:
-   if j>=1000 or j<0:
+   if j>=5000 or j<0:
       del yy[xx.index(j)]
       xx.remove(j)
 
 for j in yy[:]:
-   if j>=1600 or j<0:
+   if j>=16000 or j<0:
       del xx[yy.index(j)]
       yy.remove(j)
 
@@ -48,6 +48,7 @@ countt = Counter(df["Color"])
 #Logic to calculate Forks avg. Time
 j = {}
 bb = {}
+cc = {}
 length = len(df["Color"])
 for i in set(df["Color"]):
    gg = []
@@ -57,27 +58,45 @@ for i in set(df["Color"]):
    for k in range(0, length):
       if (df["Color"][k]==i):
          gg.append(df["TimeDiffInMins"][k])
+         temp = df["Forks"][k]
    j[i]= statistics.mean(gg)
+   cc[int(temp)] = j[i] 
    try:
       bb[i]= round(statistics.stdev(gg), 2)
    except:
       bb[i] = 0
-print(j)
+rr = sorted(cc)
 
 
 groups = df.groupby("Color")
-print(groups)
 
 plt.title("Bug fix times vs. Projects; Label: Count : Mean : StdDev")
 for name, group in groups:
    hh = [countt[name],j[name], bb[name]]
    plt.plot(group.TimeDiffInMins , group.Forks , marker = 'o', linestyle='', markersize=6, label = hh)
 
+
+
 plt.xlabel("Time in minutes")
 plt.ylabel("Number of forks")
 #plt.scatter(df["TimeDiffInMins"], df["Forks"], c=df.Color, label=0)
 
 plt.legend()
+plt.show()
+
+p =0
+g={}
+for u in rr:
+   g[p]= cc[u]
+   p+=1
+print(rr)
+print(cc)
+print(g)
+
+plt.title("Wow what do we have here!")
+plt.xlabel("Project no. (0-1)")
+plt.ylabel("Time in minutes")
+plt.bar(g.keys(), g.values(), 1, color = 'g')
 plt.show()
 
 t = set(yy)
